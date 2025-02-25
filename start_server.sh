@@ -58,12 +58,18 @@ check_smb_server_exists()
     return 0
 }
 
+# Cria o arquivo de configuração do samba
 create_smb_config()
 {
+    echo "" >> $CONFIG_FILE
     echo "[$NOME_DO_COMPARTILHAMENTO]" >> $CONFIG_FILE
     echo "  path = $PATH_DA_PASTA" >> $CONFIG_FILE
     echo "  guest ok = yes" >> $CONFIG_FILE
     echo "  read only = no" >> $CONFIG_FILE
+    echo "  writeable = yes" >> $CONFIG_FILE
+    echo "  browsable = yes" >> $CONFIG_FILE
+    echo "  create mask = 0777" >> $CONFIG_FILE
+    echo "  directory mask = 0777" >> $CONFIG_FILE
 }
 
 # Verifica se o script está usando o comando sudo (usuário root)
@@ -82,6 +88,7 @@ else
     create_shared_folder
 fi
 
+# Verifica se o compartilhamento PS2SMB está configurado corretamente
 check_smb_server_exists
 ret=$?
 
