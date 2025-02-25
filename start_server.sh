@@ -87,8 +87,8 @@ ret=$?
 
 if [[ $ret -eq -1 ]]; then
     exit 1
-elif [[ $ret -eq 1 ]]; then
-    echo "O compartilhamento $NOME_DO_COMPARTILHAMENTO não foi encontrado no arquivo de configuração do samba. Criando o compartilhamento $NOME_DO_COMPARTILHAMENTO ao arquivo de configuração do samba.."
+elif [[ $ret -eq 0 ]]; then
+    echo "O compartilhamento $NOME_DO_COMPARTILHAMENTO não foi encontrado no arquivo de configuração do samba. Criando o compartilhamento $NOME_DO_COMPARTILHAMENTO.."
     create_smb_config
-    echo "Compartilhamento $NOME_DO_COMPARTILHAMENTO adicionado ao arquivo de configuração do samba $CONFIG_FILE."
+    echo "Compartilhamento $NOME_DO_COMPARTILHAMENTO adicionado ao arquivo de configuração do samba $CONFIG_FILE"
 fi
