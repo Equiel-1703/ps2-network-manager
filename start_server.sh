@@ -113,5 +113,4 @@ elif [[ $ret -eq 1 ]]; then
     echo -e "${GREEN}Compartilhamento $NOME_DO_COMPARTILHAMENTO adicionado ao arquivo de configuração do samba $CONFIG_FILE ${NC}"
 fi
 
-echo -e "${GREEN}Iniciando script de gerenciamento em python..${NC}"
-python $PYTHON_SCRIPT
+echo -e "${GREEN}Configurações do servidor SAMBA concluídas! O gerenciador em Python ${PYTHON_SCRIPT} já pode ser iniciado.${NC}"
