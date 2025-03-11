@@ -3,163 +3,70 @@
 
 import os
 import sys
-import re
 import socket
-from colorama import Fore, init
+import colorama
+from colorama import Fore
 
-SAMBA_CONF_PATH = "/etc/samba/smb.conf"
-DEBUG = False
+from modules.SambaManager import SambaManager
+from modules.Exceptions import GlobalSettingsNotFound
 
-# Verifica se o script está sendo executado como root
 def check_root():
+    """Checks if the script is running as root. If not, it exits the script with an error message."""
+
     if os.geteuid() != 0:
         print(Fore.RED + "Este script precisa ser executado como root.")
         sys.exit(1)
 
-# Lê o arquivo de configuração do SAMBA e retorna os dados (ignorando comentários e linhas em branco)
-def read_samba_conf():
-    conf_file = open(SAMBA_CONF_PATH, "r")
-    original_conf_data = conf_file.readlines()
-    conf_file.close()
-
-    # Vamos remover os comentários e as linhas em branco dos nossos dados
-    conf_data = []
-    for line in original_conf_data:
-        if line[0] != "#" and line[0] != ";" and line != "\n":
-            conf_data.append(line)
-
-    return conf_data
-
-# Extrai o conteúdo de uma tag de configuração do SAMBA
-def extract_tag_content(tag, conf_data):
-    tag_data = re.search(rf"\[{tag}\]\s*(?P<tag_data>.*?)(?=\[|$)", conf_data, flags=re.DOTALL)
-
-    if tag_data is not None:
-        return tag_data.group("tag_data")
-    else:
-        return None
-
-# Verifica se as configurações globais do SAMBA estão corretas para o PS2
-def check_global_samba_conf():
-    conf_data = read_samba_conf()
-
-    if DEBUG:
-        print()
-        print(Fore.CYAN + f"Dados lidos de {SAMBA_CONF_PATH}:")
-        for line in conf_data:
-            print(line, end='')
-        print()
-
-    conf_data = "".join(conf_data)
-    global_config_data = extract_tag_content("global", conf_data)
-
-    if global_config_data is None:
-        print(Fore.RED + "Erro: Seção [global] não encontrada no arquivo de configuração do SAMBA.")
-        print(Fore.RED + f"Por favor, verifique se o arquivo de configuração do SAMBA {SAMBA_CONF_PATH} está correto e tente novamente.")
-        sys.exit(1)
-
-    if DEBUG:
-        print(Fore.CYAN + "Dados da seção [global]:")
-        print(global_config_data)
+def process_args():
+    """Processes the command line arguments and returns the debug flag."""
     
-    # Validando a seção [global]
-    global_valid = True
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "-d" or sys.argv[1] == "--debug":
+            print(Fore.YELLOW + "Modo debug ativado.")
+            return True
+        else:
+            if not (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
+                print(Fore.RED + "Erro: Argumento inválido.")
+                print(Fore.RED + "Use -h ou --help para obter ajuda.")
+                sys.exit(1)
+            else:
+                # Print help message
+                print(f"USO: {Fore.LIGHTYELLOW_EX}python3 {Fore.WHITE}'PS2 Network Manager.py' {Fore.LIGHTBLUE_EX}[OPÇÕES]\n")
+                print(f"OPÇÕES:")
+                print(f"  {Fore.LIGHTBLUE_EX}-d, --debug{Fore.RESET}  Ativa o modo de depuração.")
+                print(f"  {Fore.LIGHTBLUE_EX}-h, --help{Fore.RESET}   Mostra esta mensagem de ajuda.")
+            
+            sys.exit(0)
 
-    global_regexes = [r"\s*netbios name = .*", r"\s*server min protocol = NT1", r"\s*client min protocol = NT1"]
+    return False
 
-    for regex in global_regexes:
-        if not re.search(regex, global_config_data):
-            global_valid = False
-            print(Fore.RED + f"Erro: {regex} não encontrado no arquivo de configuração.")
-
-    return global_valid    
-
-# Cria um novo arquivo de configuração do SAMBA mantendo uma cópia do original
-def backup_and_update_samba_conf():
-    # Criar uma cópia de backup do arquivo de configuração original (se ela não existir)
-    os.system(f"cp --update=none {SAMBA_CONF_PATH} {SAMBA_CONF_PATH}.bak")
-
-    # Lendo o arquivo de configuração do SAMBA
-    conf_data = read_samba_conf()
-    conf_data = "".join(conf_data)
-
-    # Obtendo a seção [global]
-    global_config_data = extract_tag_content("global", conf_data)
-
-    # Verificando se já temos o nome netbios (se tiver, vamos manter o mesmo)
-    netbios_name = re.search(r"\s*netbios name = (.*)", global_config_data)
-
-    if netbios_name is not None:
-        global_config_data = re.sub(r"\s*netbios name = (.*)", "", global_config_data)
-        netbios_name = netbios_name.group(1)
-
-    # Removendo configurações que vamos adicionar e que talvez já estejam lá (para garantir tenham os valores corretos)
-    global_config_data = re.sub(r"\bserver min protocol = .*|\bclient min protocol = .*", "", global_config_data).strip()
-    print(Fore.GREEN + "Configurações antigas removidas.")
-
-    if DEBUG:
-        print()
-        print(Fore.CYAN + "Arquivo sem as configurações antigas:")
-        print(global_config_data)
-        print()
-
-    global_config_data = global_config_data.split("\n")
-
-    for i in range(len(global_config_data)):
-        global_config_data[i] = global_config_data[i].strip()    
-    
-    # Adicionando as novas configurações
-    if netbios_name is not None:
-        global_config_data.insert(0, "netbios name = " + netbios_name)
-    else:
-        global_config_data.insert(0, "netbios name = SAMBA") # Se não tiver o nome netbios, vamos adicionar um nome padrão
-    global_config_data.insert(1, "server min protocol = NT1")
-    global_config_data.insert(2, "client min protocol = NT1")
-
-    global_config_data = "\n   ".join(global_config_data)
-    global_config_data = f"[global]\n   {global_config_data.strip()}\n"
-
-    # Removendo as configurações globais antigas
-    conf_data = re.sub(r"\[global\]\s*(.*?)(?=\[|$)", "", conf_data, flags=re.DOTALL)
-
-    # Adicionando as novas configurações globais
-    conf_data = global_config_data + conf_data
-
-    # Escrevendo as novas configurações no arquivo de configuração
-    conf_file = open(SAMBA_CONF_PATH, "w")
-    conf_file.write(conf_data)
-    conf_file.close()
-
-    print(Fore.GREEN + "Configurações globais do compartilhamento SAMBA atualizadas com sucesso!")
-
-    if DEBUG:
-        print()
-        print(Fore.CYAN + "Novo arquivo de configuração do SAMBA:")
-        print(conf_data.strip())
-        print()
 
 if __name__ == "__main__":
-    # Inicializar o colorama
-    init(autoreset=True)
+    # Initializing colorama
+    colorama.init(autoreset=True)
 
-    # Este script precisa ser executado como root!
+    # Check if the script is running as root
     check_root()
-
-    #ler argumentos
-    if len(sys.argv) > 1 and sys.argv[1] == "-d":
-        DEBUG = True
-        print(Fore.YELLOW + "Modo debug ativado.")
-
-    if check_global_samba_conf() == False:
-        print()
-        print(Fore.YELLOW + "Parece que algumas configurações globais do compartilhamento SAMBA não estão corretas para se comunicar com o PS2.")
-        print(Fore.YELLOW + "Iremos consertar isso para você.")
-        print()
-
-        backup_and_update_samba_conf()
-    else:
-        print(Fore.GREEN + "Configurações globais do compartilhamento SAMBA estão corretas.")
     
+    # Process command line arguments
+    debug = process_args()
+
+    samba_manager = SambaManager(debug)
+
+    try:
+        if samba_manager.check_global_samba_conf() == False:
+            print()
+            print(Fore.YELLOW + "Parece que algumas configurações globais do compartilhamento SAMBA não estão corretas para se comunicar com o PS2.")
+            print(Fore.YELLOW + "Iremos consertar isso para você.")
+            print()
+
+            samba_manager.backup_and_fix_global_conf()
+        else:
+            print(Fore.GREEN + "Configurações globais do compartilhamento SAMBA estão corretas.")
+    
+    except GlobalSettingsNotFound as e:
+        print(e)
+        sys.exit(1)
 
     exit(0)
 
