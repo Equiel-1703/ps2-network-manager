@@ -5,16 +5,26 @@ import os
 import sys
 import socket
 import colorama
+from PyQt6.QtWidgets import QApplication
 from colorama import Fore
 
+# Importing our custom modules
 from modules.SambaManager import SambaManager
-from modules.Exceptions import GlobalSettingsNotFound
+from modules.Exceptions import *
+from modules.GUI import PS2NetManagerGUI
 
 def check_root():
     """Checks if the script is running as root. If not, it exits the script with an error message."""
 
     if os.geteuid() != 0:
         print(Fore.RED + "Este script precisa ser executado como root.")
+        sys.exit(1)
+
+def check_os_support():
+    """Checks if the script is running on a supported OS. If not, print an error message and exit the script."""
+
+    if not sys.platform.startswith("linux"):
+        print(Fore.RED + "Desculpe, mas este script só pode ser executado em sistemas operacionais Linux.")
         sys.exit(1)
 
 def process_args():
@@ -45,15 +55,19 @@ if __name__ == "__main__":
     # Initializing colorama
     colorama.init(autoreset=True)
 
+    # Check if the script is running on a supported OS
+    check_os_support()
+
     # Check if the script is running as root
     check_root()
     
-    # Process command line arguments
-    debug = process_args()
-
-    samba_manager = SambaManager(debug)
+    # Process command line arguments and return the debug flag
+    debug_flag = process_args()
 
     try:
+        # Create a SambaManager instance
+        samba_manager = SambaManager(debug_flag)
+
         if samba_manager.check_global_samba_conf() == False:
             print()
             print(Fore.YELLOW + "Parece que algumas configurações globais do compartilhamento SAMBA não estão corretas para se comunicar com o PS2.")
@@ -64,11 +78,31 @@ if __name__ == "__main__":
         else:
             print(Fore.GREEN + "Configurações globais do compartilhamento SAMBA estão corretas.")
     
-    except GlobalSettingsNotFound as e:
+    except BaseManagerException as e:
+        print(Fore.RED + "PS2 Network Manager encontrou um erro:\n")
+        print(e)
+        sys.exit(1)
+    
+    except Exception as e:
+        print(Fore.RED + "Um erro inesperado ocorreu:\n")
         print(e)
         sys.exit(1)
 
-    exit(0)
+    # Setup the PyQt6 application
+    app = QApplication([])
+
+    # Create the main window
+    window = PS2NetManagerGUI()
+    window.show()
+    
+    # Execute the application
+    app_return = app.exec()
+
+    del window
+    
+    if QApplication.instance() is not None:
+        # Exit the script with the return code from the application
+        sys.exit(app_return)
 
 # -----------------------------------------------------------------------------
 
