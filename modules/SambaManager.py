@@ -18,7 +18,7 @@ class SambaManager:
         if not os.path.exists(self.SAMBA_CONF_PATH):
             raise SambaConfNotFound(self.SAMBA_CONF_PATH)
 
-    def __read_samba_conf(self):
+    def __read_samba_conf(self) -> list:
         """Reads the SAMBA configuration file and returns its contents as a list of strings, removing comments and blank lines.
 
         Returns:
@@ -36,7 +36,7 @@ class SambaManager:
 
         return conf_data
 
-    def __extract_tag_content(self, tag, conf_data):
+    def __extract_tag_content(self, tag: str, conf_data: str) -> (str | None):
         """Extracts the content of a tag from a configuration file.
 
         Args:
@@ -44,7 +44,8 @@ class SambaManager:
             conf_data (str): The configuration file data as a unique string.
         
         Returns:
-            str: The content of the tag. If the tag is not found, it returns None.
+            str: The content of the tag.
+            None: If the tag is not found.
         """
 
         tag_data = re.search(rf"\[{tag}\]\s*(?P<tag_data>.*?)(?=\[|$)", conf_data, flags=re.DOTALL)
@@ -54,7 +55,7 @@ class SambaManager:
         else:
             return None
     
-    def __update_tag_content(self, tag, new_content, conf_data):
+    def __update_tag_content(self, tag: str, new_content: list, conf_data: str) -> str:
         """Updates the content of a tag in a configuration file.
 
         Args:
@@ -80,7 +81,7 @@ class SambaManager:
 
         return conf_data
     
-    def __update_setting_in_tag(self, tag, setting, new_value, conf_data):
+    def __update_setting_in_tag(self, tag: str, setting: str, new_value: str, conf_data: str) -> str:
         """Updates a setting in a tag in a configuration file.
 
         Args:
@@ -106,7 +107,7 @@ class SambaManager:
 
         return conf_data
 
-    def __extract_setting_from_tag(self, tag, setting, conf_data):
+    def __extract_setting_from_tag(self, tag: str, setting: str, conf_data: str) -> str:
         """Extracts a setting from a tag in a configuration file.
 
         Args:
@@ -131,7 +132,7 @@ class SambaManager:
         else:
             raise SettingNotFound(setting)
 
-    def __validate_netbios_name(self, netbios_name):
+    def __validate_netbios_name(self, netbios_name: str) -> None:
         """Validates a NetBIOS name.
 
         Args:
@@ -147,7 +148,7 @@ class SambaManager:
         elif not re.match(r"[a-zA-Z0-9][a-zA-Z0-9\-\.]*[a-zA-Z0-9]", netbios_name):
             raise ValueError("O nome NetBIOS só pode conter letras, números, hífens e pontos. Não deve ter espaços nem caracteres especiais. Deve começar e terminar com letras ou números e não pode ultrapassar 15 caracteres.")
 
-    def check_global_samba_conf(self):
+    def check_global_samba_conf(self) -> bool:
         """Checks if the global SAMBA configuration is correct for communicating with the PS2.
 
         Returns:
@@ -187,7 +188,7 @@ class SambaManager:
 
         return global_valid    
 
-    def backup_and_fix_global_conf(self):
+    def backup_and_fix_global_conf(self) -> None:
         """Backups the original SAMBA configuration file (if it isn't already) and updates the global SAMBA configuration to communicate with the PS2."""
 
         # Creating a backup of the original SAMBA configuration file (if it doesn't already exist)
@@ -249,22 +250,22 @@ class SambaManager:
             print(conf_data.strip())
             print()
     
-    def start_server(self):
+    def start_server(self) -> None:
         """Starts the SAMBA and NerBIOS service."""
         os.system("sudo systemctl start smbd nmbd")
         print(Fore.GREEN + "Servidor SAMBA e NetBIOS iniciado com sucesso!")
     
-    def stop_server(self):
+    def stop_server(self) -> None:
         """Stops the SAMBA and NetBIOS service."""
         os.system("sudo systemctl stop smbd nmbd")
         print(Fore.GREEN + "Servidor SAMBA e NetBIOS parado com sucesso!")
     
-    def restart_server(self):
+    def restart_server(self) -> None:
         """Restarts the SAMBA and NetBIOS service."""
         os.system("sudo systemctl restart smbd nmbd")
         print(Fore.GREEN + "Servidor SAMBA e NetBIOS reiniciado com sucesso!")
     
-    def get_netbios_name(self):
+    def get_netbios_name(self) -> str:
         """Returns the NetBIOS name of the SAMBA server.
 
         Returns:
@@ -276,7 +277,7 @@ class SambaManager:
         
         return self.__netbios_name
     
-    def set_netbios_name(self, netbios_name):
+    def set_netbios_name(self, netbios_name: str) -> None:
         """Sets the NetBIOS name of the SAMBA server.
 
         Args:
