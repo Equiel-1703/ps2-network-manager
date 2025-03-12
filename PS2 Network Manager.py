@@ -11,7 +11,7 @@ from colorama import Fore
 # Importing our custom modules
 from modules.SambaManager import SambaManager
 from modules.Exceptions import *
-from modules.GUI import PS2NetManagerGUI
+from modules.GUI.GUI import PS2NetManagerGUI
 
 def check_root():
     """Checks if the script is running as root. If not, it exits the script with an error message."""
