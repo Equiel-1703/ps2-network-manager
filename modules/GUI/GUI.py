@@ -6,6 +6,8 @@ from PyQt6.QtCore import Qt, QRect
 from modules.GUI.GUIColors import GUIColors as Colors
 from modules.GUI.GUIFonts import GUIFonts as Fonts
 from modules.GUI.GUICustomWidgets import GUICustomWidgets as Widgets
+from modules.GUI.GUIController import PS2NetManagerGUIController
+from modules.GUI.WidgetsNames import WidgetsNames as WN
 from modules.SambaManager import SambaManager
 
 class WindowDimensions(Enum):
@@ -15,12 +17,10 @@ class WindowDimensions(Enum):
 class MainLayoutSettings(Enum):
     MARGIN = 10
     SPACING = 15
-    
+
 class PS2NetManagerGUI(QMainWindow):
     def __init__(self, samba_manager: SambaManager):
         super().__init__()
-
-        self.__samba_manager = samba_manager
 
         # Window title
         self.setWindowTitle("PS2 Network Manager")
@@ -49,12 +49,18 @@ class PS2NetManagerGUI(QMainWindow):
         )
         main_layout.setSpacing(MainLayoutSettings.SPACING.value)
 
+        # Creating log messages container
+        log_msg_container = self.__create_log_messages_container()
+
+        # Creating GUI Controller
+        self.gui_controller = PS2NetManagerGUIController(samba_manager, self, log_msg_container)
+
         # Creating widgets for the GUI sections
         netbios_widget = self.__create_netbios_widget()
         share_name_widget = self.__create_share_name_widget()
         shared_folder_widget = self.__create_shared_folder_path_widget()
         net_settings_widget = self.__net_settings_widget()
-        samba_status_widget = self.__create_samba_status_widget()
+        samba_status_widget = self.__create_samba_status_widget(log_msg_container)
         main_buttons_widget = self.__create_main_buttons_widget()
 
         # Adding the widgets to the main layout
@@ -81,6 +87,21 @@ class PS2NetManagerGUI(QMainWindow):
         widget.setLayout(layout)
         return widget
 
+    def __create_log_messages_container(self) -> QPlainTextEdit:
+        msg_container = QPlainTextEdit(self)
+
+        CONTAINER_HEIGHT = 200
+
+        msg_container.setReadOnly(True)
+        msg_container.setFont(Fonts.CODE_FONT)
+        msg_container.setStyleSheet(F"background-color: {Colors.OFF_WHITE}; color: {Colors.OFF_BLACK};")
+        msg_container.setFixedHeight(CONTAINER_HEIGHT)
+
+        msg_container.setPlainText("Mensagens de status aparecerão aqui.")
+        
+        msg_container.setObjectName(WN.LOG_MSG_CONTAINER.value)
+        return msg_container
+
     def __create_netbios_widget(self) -> QWidget:
         netbios_layout = QHBoxLayout()
         netbios_layout.setContentsMargins(0, 0, 0, 0)
@@ -88,15 +109,18 @@ class PS2NetManagerGUI(QMainWindow):
         label = Widgets.create_label(self, "NOME NETBIOS:")
 
         line_field = Widgets.create_line_edit(self, placeholder="Digite o nome do servidor...")
+        line_field.setObjectName(WN.NETBIOS_LINE_EDIT.value)
+        
         line_field.setFixedHeight(label.sizeHint().height()) # Same height as the label
         line_field.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        line_field.setText(self.__samba_manager.get_netbios_name())
+        
+        self.gui_controller.initialize_netbios_line_edit()
 
         ok_button = Widgets.create_button(self, "OK")
-        ok_button.clicked.connect(lambda: print("OK button clicked"))
+        ok_button.clicked.connect(self.gui_controller.on_netbios_ok_clicked)
 
         SPACER_WIDTH = 10
-
+        
         netbios_layout.addWidget(label)
         netbios_layout.addSpacerItem(QSpacerItem(SPACER_WIDTH, 0))
         netbios_layout.addWidget(line_field)
@@ -180,22 +204,8 @@ class PS2NetManagerGUI(QMainWindow):
         main_net_layout.addLayout(net_settings_layout)
 
         return self.__wrap_layout(main_net_layout)
-        
-    def __create_log_messages_container(self) -> QPlainTextEdit:
-        msg_container = QPlainTextEdit(self)
-
-        CONTAINER_HEIGHT = 200
-
-        msg_container.setReadOnly(True)
-        msg_container.setFont(Fonts.CODE_FONT)
-        msg_container.setStyleSheet(F"background-color: {Colors.OFF_WHITE}; color: {Colors.OFF_BLACK};")
-        msg_container.setFixedHeight(CONTAINER_HEIGHT)
-
-        msg_container.setPlainText("Mensagens de status aparecerão aqui.")
-
-        return msg_container
     
-    def __create_samba_status_widget(self) -> QWidget:
+    def __create_samba_status_widget(self, log_msg_container: QPlainTextEdit) -> QWidget:
         main_samba_status_layout = QVBoxLayout()
         main_samba_status_layout.setContentsMargins(10, 10, 10, 10)
         main_samba_status_layout.setSpacing(15)
@@ -224,12 +234,11 @@ class PS2NetManagerGUI(QMainWindow):
         transmition_speed_layout.addWidget(transmition_speed_label)
         transmition_speed_layout.addWidget(transmission_speed_value_label)
 
-        # Log messages container
-        log_msg_container = self.__create_log_messages_container()
-
         # Adding the widgets to the main layout
         main_samba_status_layout.addLayout(status_layout)
         main_samba_status_layout.addLayout(transmition_speed_layout)
+        
+        # Adding the log messages container
         main_samba_status_layout.addWidget(log_msg_container)
 
         samba_status_widget = self.__wrap_layout(main_samba_status_layout)
