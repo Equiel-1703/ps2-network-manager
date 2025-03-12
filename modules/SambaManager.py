@@ -69,6 +69,10 @@ class SambaManager:
 
         # Adding the tag header to the new content
         new_content.insert(0, f"[{tag}]")
+        
+        # Strip new content for consistency indentation
+        for i in range(len(new_content)):
+            new_content[i] = new_content[i].strip()
 
         # Joining the new content and adding 3 spaces before each line
         new_content = "\n   ".join(new_content)
