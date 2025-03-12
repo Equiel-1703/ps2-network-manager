@@ -254,20 +254,59 @@ class SambaManager:
             print(conf_data.strip())
             print()
     
-    def start_server(self) -> None:
-        """Starts the SAMBA and NerBIOS service."""
-        os.system("sudo systemctl start smbd nmbd")
-        print(Fore.GREEN + "Servidor SAMBA e NetBIOS iniciado com sucesso!")
+    def start_server(self) -> int:
+        """Starts the SAMBA and NetBIOS service.
+
+        Returns:
+            int: The return code of the service start command.
+            
+        Raises:
+            SambaServiceFailure: If the service start command returns a non-zero value.
+        """
+        
+        ret = os.system("sudo systemctl start smbd nmbd")
+        
+        if ret != 0:
+            raise SambaServiceFailure(ret)
+        else:
+            print(Fore.GREEN + "Servidor SAMBA e NetBIOS iniciado com sucesso!")
+            return ret
     
-    def stop_server(self) -> None:
-        """Stops the SAMBA and NetBIOS service."""
-        os.system("sudo systemctl stop smbd nmbd")
-        print(Fore.GREEN + "Servidor SAMBA e NetBIOS parado com sucesso!")
+    def stop_server(self) -> int:
+        """Stops the SAMBA and NetBIOS service.
+
+        Returns:
+            int: The return code of the service stop
+
+        Raises:
+            SambaServiceFailure: If the service stop command returns a non-zero value.
+        """
+        
+        ret = os.system("sudo systemctl stop smbd nmbd")
+        
+        if ret != 0:
+            raise SambaServiceFailure(ret)
+        else:
+            print(Fore.GREEN + "Servidor SAMBA e NetBIOS parados com sucesso!")
+            return ret
     
-    def restart_server(self) -> None:
-        """Restarts the SAMBA and NetBIOS service."""
-        os.system("sudo systemctl restart smbd nmbd")
-        print(Fore.GREEN + "Servidor SAMBA e NetBIOS reiniciado com sucesso!")
+    def restart_server(self) -> int:
+        """Restarts the SAMBA and NetBIOS service.
+        
+        Returns:
+            int: The return code of the service restart command.
+            
+        Raises:
+            SambaServiceFailure: If the service restart command returns a non-zero value.
+        """
+        
+        ret = os.system("sudo systemctl restart smbd nmbd")
+        
+        if ret != 0:
+            raise SambaServiceFailure(ret)
+        else:
+            print(Fore.GREEN + "Servidor SAMBA e NetBIOS reiniciados com sucesso!")
+            return ret
     
     def get_netbios_name(self) -> str:
         """Returns the NetBIOS name of the SAMBA server.
