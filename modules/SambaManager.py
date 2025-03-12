@@ -3,14 +3,20 @@ import re
 import sys
 from colorama import Fore
 
-from modules.Exceptions import GlobalSettingsNotFound
+from modules.Exceptions import *
 
 class SambaManager:
     SAMBA_CONF_PATH = "/etc/samba/smb.conf"
     DEFAULT_NETBIOS_NAME = "SAMBA"
 
+    __netbios_name = ""
+
     def __init__(self, debug=False):
         self.debug = debug
+
+        # Check if samba config file exists
+        if not os.path.exists(self.SAMBA_CONF_PATH):
+            raise SambaConfNotFound(self.SAMBA_CONF_PATH)
 
     def __read_samba_conf(self):
         """Reads the SAMBA configuration file and returns its contents as a list of strings, removing comments and blank lines.
@@ -62,8 +68,10 @@ class SambaManager:
 
         # Adding the tag header to the new content
         new_content.insert(0, f"[{tag}]")
+
         # Joining the new content and adding 3 spaces before each line
         new_content = "\n   ".join(new_content)
+        
         # Escaping backslashes
         new_content = new_content.replace("\\", "\\\\")
 
@@ -71,6 +79,73 @@ class SambaManager:
         conf_data = re.sub(rf"\[{tag}\]\s*(.*?)(?=\[|$)", new_content, conf_data, flags=re.DOTALL)
 
         return conf_data
+    
+    def __update_setting_in_tag(self, tag, setting, new_value, conf_data):
+        """Updates a setting in a tag in a configuration file.
+
+        Args:
+            tag (str): The tag to search for.
+            setting (str): The setting to update.
+            new_value (str): The new value of the setting.
+            conf_data (str): The configuration file to update as a unique string.
+
+        Returns:
+            str: The new configuration file data with the updated setting.
+        """
+        # Extract tag content
+        tag_data = self.__extract_tag_content(tag, conf_data)
+
+        # Escape backslashes in new value for setting
+        new_value = new_value.replace("\\", "\\\\")
+
+        # Update setting
+        tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}", tag_data)
+
+        # Update tag content in configuration data
+        conf_data = self.__update_tag_content(tag, tag_data.split("\n"), conf_data)
+
+        return conf_data
+
+    def __extract_setting_from_tag(self, tag, setting, conf_data):
+        """Extracts a setting from a tag in a configuration file.
+
+        Args:
+            tag (str): The tag to search for.
+            setting (str): The setting to extract.
+            conf_data (str): The configuration file to search in as a unique string.
+
+        Returns:
+            str: The value of the setting.
+
+        Raises:
+            SettingNotFound: If the setting is not found in the tag.
+        """
+        # Extract tag content
+        tag_data = self.__extract_tag_content(tag, conf_data)
+
+        # Extract setting value
+        setting_value = re.search(rf"\s*{setting} = (.*)", tag_data)
+
+        if setting_value is not None:
+            return setting_value.group(1).strip()
+        else:
+            raise SettingNotFound(setting)
+
+    def __validate_netbios_name(self, netbios_name):
+        """Validates a NetBIOS name.
+
+        Args:
+            netbios_name (str): The NetBIOS name to validate.
+
+        Raises:
+            ValueError: If the NetBIOS name is empty, has more than 15 characters or contains invalid characters.
+        """
+        if netbios_name == "":
+            raise ValueError("O nome NetBIOS não pode ser vazio.")
+        elif len(netbios_name) > 15:
+            raise ValueError("O nome NetBIOS não pode ter mais de 15 caracteres.")
+        elif not re.match(r"[a-zA-Z0-9][a-zA-Z0-9\-\.]*[a-zA-Z0-9]", netbios_name):
+            raise ValueError("O nome NetBIOS só pode conter letras, números, hífens e pontos. Não deve ter espaços nem caracteres especiais. Deve começar e terminar com letras ou números e não pode ultrapassar 15 caracteres.")
 
     def check_global_samba_conf(self):
         """Checks if the global SAMBA configuration is correct for communicating with the PS2.
@@ -173,3 +248,59 @@ class SambaManager:
             print(Fore.CYAN + "Novo arquivo de configuração do SAMBA:")
             print(conf_data.strip())
             print()
+    
+    def start_server(self):
+        """Starts the SAMBA and NerBIOS service."""
+        os.system("sudo systemctl start smbd nmbd")
+        print(Fore.GREEN + "Servidor SAMBA e NetBIOS iniciado com sucesso!")
+    
+    def stop_server(self):
+        """Stops the SAMBA and NetBIOS service."""
+        os.system("sudo systemctl stop smbd nmbd")
+        print(Fore.GREEN + "Servidor SAMBA e NetBIOS parado com sucesso!")
+    
+    def restart_server(self):
+        """Restarts the SAMBA and NetBIOS service."""
+        os.system("sudo systemctl restart smbd nmbd")
+        print(Fore.GREEN + "Servidor SAMBA e NetBIOS reiniciado com sucesso!")
+    
+    def get_netbios_name(self):
+        """Returns the NetBIOS name of the SAMBA server.
+
+        Returns:
+            str: The NetBIOS name of the SAMBA server.
+        """
+        if self.__netbios_name == "":
+            conf_data = self.__read_samba_conf()
+            self.__netbios_name = self.__extract_setting_from_tag("global", "netbios name", "".join(conf_data))
+        
+        return self.__netbios_name
+    
+    def set_netbios_name(self, netbios_name):
+        """Sets the NetBIOS name of the SAMBA server.
+
+        Args:
+            netbios_name (str): The new NetBIOS name of the SAMBA server.
+
+        Raises:
+            ValueError: If the NetBIOS name is the same, empty, has more than 15 characters or contains invalid characters.
+        """
+
+        self.__validate_netbios_name(netbios_name)
+        
+        if self.__netbios_name == netbios_name:
+            raise ValueError("O nome NetBIOS informado é o mesmo que já está configurado.")
+
+        conf_data = self.__read_samba_conf()
+        conf_data = self.__update_setting_in_tag("global", "netbios name", netbios_name, "".join(conf_data))
+
+        conf_file = open(self.SAMBA_CONF_PATH, "w")
+        conf_file.write(conf_data)
+        conf_file.close()
+
+        self.__netbios_name = netbios_name
+
+        # Restart server to changes take effect
+        self.restart_server()
+
+        print(Fore.GREEN + f"Nome NetBIOS alterado para '{netbios_name}' com sucesso!")
