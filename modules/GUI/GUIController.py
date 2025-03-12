@@ -13,6 +13,11 @@ class PS2NetManagerGUIController:
         self.samba_manager = samba_manager
         self.log_display_widget = log_display_widget
         self.gui = gui
+        
+    def log(self, text: str):
+        """Logs a message to the log display widget."""
+        
+        self.log_display_widget.appendPlainText(text)
     
     def initialize_netbios_line_edit(self):
         """Initializes the NetBIOS name line edit with the current NetBIOS name."""
@@ -32,5 +37,5 @@ class PS2NetManagerGUIController:
             self.samba_manager.set_netbios_name(netbios_name)
         
         except ValueError as e:
-            self.log_display_widget.appendPlainText(f"Erro: {e}")
+            self.log(f"ERRO: {e}")
         
