@@ -92,7 +92,7 @@ if __name__ == "__main__":
     app = QApplication([])
 
     # Create the main window
-    window = PS2NetManagerGUI()
+    window = PS2NetManagerGUI(samba_manager)
     window.show()
     
     # Execute the application
