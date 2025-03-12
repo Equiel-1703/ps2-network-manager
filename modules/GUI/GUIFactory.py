@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QFont
 
+from modules.GUI.GUIColors import GUIColors as GUC
+
 class GUIFactory:
     """Factory class for creating GUI elements."""
 
@@ -36,6 +38,17 @@ class GUIFactory:
         
         P_TB = "2px"
         P_LR = "15px"
-        button.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; padding: {P_TB} {P_LR};")
+        button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: none;
+                border-radius: 5px;
+                padding: {P_TB} {P_LR};
+            }}
+            QPushButton:hover {{
+                background-color: {GUC.enlight_color(bg_color, 0.1)};
+            }}
+        """)
 
         return button

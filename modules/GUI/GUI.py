@@ -34,7 +34,7 @@ class PS2NetManagerGUI(QMainWindow):
         main_layout.setContentsMargins(ML_MARGIN, ML_MARGIN, ML_MARGIN, ML_MARGIN)
         main_layout.setSpacing(ML_SPACING)
 
-        # Creating layouts for the sections of the GUI
+        # Creating widgets for the GUI sections
         netbios_widget = self.__create_netbios_widget()
         share_name_widget = self.__create_share_name_widget()
         shared_folder_widget = self.__create_shared_folder_path_widget()
@@ -52,7 +52,7 @@ class PS2NetManagerGUI(QMainWindow):
         main_layout.addStretch()
         main_layout.addWidget(main_buttons_widget)
 
-        # Creating the main widget
+        # Creating main widget
         main_widget = QWidget()
         main_widget.setLayout(main_layout)
         main_widget.setStyleSheet(f"background-color: {Colors.DEEP_PURPLE};")
@@ -219,7 +219,7 @@ class PS2NetManagerGUI(QMainWindow):
         main_samba_status_layout.addWidget(log_msg_container)
 
         samba_status_widget = self.__wrap_layout(main_samba_status_layout)
-        samba_status_widget.setStyleSheet(f"background-color: {Colors.DARK_LAVENDER};")
+        samba_status_widget.setStyleSheet(f"background-color: {Colors.DARK_LAVENDER}; border-radius: 10px;")
         return samba_status_widget
     
     def __create_main_buttons_widget(self):
@@ -240,7 +240,7 @@ class PS2NetManagerGUI(QMainWindow):
             self,
             "INICIAR",
             Fonts.BOLD_FONT,
-            Colors.DEEP_MARINE,
+            Colors.LIGHT_GREEN,
             Colors.OFF_WHITE
         )
         start_button.clicked.connect(lambda: print("Start button clicked"))
@@ -249,7 +249,7 @@ class PS2NetManagerGUI(QMainWindow):
             self,
             "PARAR",
             Fonts.BOLD_FONT,
-            Colors.DEEP_MARINE,
+            Colors.SOFT_RED,
             Colors.OFF_WHITE
         )
         stop_button.clicked.connect(lambda: print("Stop button clicked"))
