@@ -4,7 +4,7 @@ from PyQt6.QtGui import QFont
 from modules.GUI.GUIColors import GUIColors as GUC
 
 class GUIFactory:
-    """Factory class for creating GUI elements."""
+    """Factory class for creating generic GUI elements."""
 
     @staticmethod
     def create_hline(parent: QWidget, color: str, shadow: QFrame.Shadow = QFrame.Shadow.Sunken) -> QFrame:

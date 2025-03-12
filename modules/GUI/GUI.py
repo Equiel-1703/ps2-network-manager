@@ -1,38 +1,53 @@
+from enum import Enum
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QRect
 
 # Importing our custom modules
 from modules.GUI.GUIColors import GUIColors as Colors
 from modules.GUI.GUIFonts import GUIFonts as Fonts
-from modules.GUI.GUIFactory import GUIFactory
+from modules.GUI.GUICustomWidgets import GUICustomWidgets as Widgets
 from modules.SambaManager import SambaManager
 
-class PS2NetManagerGUI(QMainWindow):
-    # (Width, Height)
-    __WINDOW_DIMENSIONS = (800, 650)
+class WindowDimensions(Enum):
+    WIDTH = 800
+    HEIGHT = 650
 
-    def __init__(self):
+class MainLayoutSettings(Enum):
+    MARGIN = 10
+    SPACING = 15
+    
+class PS2NetManagerGUI(QMainWindow):
+    def __init__(self, samba_manager: SambaManager):
         super().__init__()
 
+        self.__samba_manager = samba_manager
+
+        # Window title
         self.setWindowTitle("PS2 Network Manager")
 
         # Center window on screen
-        window_rec = QRect(0,0, self.__WINDOW_DIMENSIONS[0], self.__WINDOW_DIMENSIONS[1])
+        window_rec = QRect(
+            0,
+            0,
+            WindowDimensions.WIDTH.value,
+            WindowDimensions.HEIGHT.value
+        )
         window_rec.moveCenter(QApplication.primaryScreen().geometry().center())
 
         self.setGeometry(window_rec)
-        self.setFixedSize(self.__WINDOW_DIMENSIONS[0], self.__WINDOW_DIMENSIONS[1])
+        self.setFixedSize(window_rec.size())
 
         # Loading custom fonts
         Fonts.load_fonts()
 
-        # Layouts
-        ML_MARGIN = 10
-        ML_SPACING = 15
-
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(ML_MARGIN, ML_MARGIN, ML_MARGIN, ML_MARGIN)
-        main_layout.setSpacing(ML_SPACING)
+        main_layout.setContentsMargins(
+            MainLayoutSettings.MARGIN.value,
+            MainLayoutSettings.MARGIN.value,
+            MainLayoutSettings.MARGIN.value,
+            MainLayoutSettings.MARGIN.value
+        )
+        main_layout.setSpacing(MainLayoutSettings.SPACING.value)
 
         # Creating widgets for the GUI sections
         netbios_widget = self.__create_netbios_widget()
@@ -46,7 +61,7 @@ class PS2NetManagerGUI(QMainWindow):
         main_layout.addWidget(netbios_widget)
         main_layout.addWidget(share_name_widget)
         main_layout.addWidget(shared_folder_widget)
-        main_layout.addWidget(GUIFactory.create_hline(self, Colors.LIGHT_GOLD))
+        main_layout.addWidget(Widgets.create_hline(self))
         main_layout.addWidget(net_settings_widget)
         main_layout.addWidget(samba_status_widget)
         main_layout.addStretch()
@@ -60,6 +75,8 @@ class PS2NetManagerGUI(QMainWindow):
         self.setCentralWidget(main_widget)
 
     def __wrap_layout(self, layout: QLayout) -> QWidget:
+        """Helper method to wrap a layout in a QWidget."""
+
         widget = QWidget()
         widget.setLayout(layout)
         return widget
@@ -68,16 +85,14 @@ class PS2NetManagerGUI(QMainWindow):
         netbios_layout = QHBoxLayout()
         netbios_layout.setContentsMargins(0, 0, 0, 0)
 
-        label = GUIFactory.create_label(self, "NOME NETBIOS:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
+        label = Widgets.create_label(self, "NOME NETBIOS:")
 
-        line_field = QLineEdit(self)
-        line_field.setPlaceholderText("Nome NetBIOS")
-        line_field.setFont(Fonts.REGULAR_FONT)
-        line_field.setStyleSheet(f"background-color: {Colors.DARK_LAVENDER}; color: {Colors.OFF_WHITE};")
+        line_field = Widgets.create_line_edit(self, placeholder="Digite o nome do servidor...")
         line_field.setFixedHeight(label.sizeHint().height()) # Same height as the label
         line_field.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        line_field.setText(self.__samba_manager.get_netbios_name())
 
-        ok_button = GUIFactory.create_button(self, "OK", Fonts.BOLD_FONT, Colors.DEEP_MARINE, Colors.OFF_WHITE)
+        ok_button = Widgets.create_button(self, "OK")
         ok_button.clicked.connect(lambda: print("OK button clicked"))
 
         SPACER_WIDTH = 10
@@ -94,10 +109,9 @@ class PS2NetManagerGUI(QMainWindow):
         share_name_layout = QHBoxLayout()
         share_name_layout.setContentsMargins(0, 0, 0, 0)
 
-        label = GUIFactory.create_label(self, "NOME DO COMPARTILHAMENTO:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
+        label = Widgets.create_label(self, "NOME DO COMPARTILHAMENTO:")
 
-        share_name_label = GUIFactory.create_label(self, "PS2SMB", Fonts.BOLD_FONT, Colors.OFF_WHITE)        
-        share_name_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        share_name_label = Widgets.create_label(self, "PS2SMB", font=Fonts.BOLD_FONT)
         share_name_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         
         share_name_layout.addWidget(label)
@@ -109,13 +123,13 @@ class PS2NetManagerGUI(QMainWindow):
         shared_folder_layout = QHBoxLayout()
         shared_folder_layout.setContentsMargins(0, 0, 0, 0)
 
-        shared_folder_label = GUIFactory.create_label(self, "PASTA COMPARTILHADA:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
+        shared_folder_label = Widgets.create_label(self, "PASTA COMPARTILHADA:")
 
-        shared_folder_path = GUIFactory.create_label(self, "/home/user/ps2smb", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        shared_folder_path = Widgets.create_label(self, "/home/user/ps2smb", font=Fonts.BOLD_FONT)
         shared_folder_path.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         shared_folder_path.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        change_folder_button = GUIFactory.create_button(self, "ALTERAR", Fonts.BOLD_FONT, Colors.DEEP_MARINE, Colors.OFF_WHITE)
+        change_folder_button = Widgets.create_button(self, "ALTERAR")
         change_folder_button.clicked.connect(lambda: print("Change folder button clicked"))
 
         shared_folder_layout.addWidget(shared_folder_label)
@@ -132,21 +146,21 @@ class PS2NetManagerGUI(QMainWindow):
         V_SPACE = 20
 
         # Section title
-        title_label = GUIFactory.create_label(self, "CONFIGURAÇÕES DE REDE", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        title_label = Widgets.create_label(self, "CONFIGURAÇÕES DE REDE", font=Fonts.BOLD_FONT)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Section body
         net_settings_layout = QHBoxLayout()
         net_settings_layout.setContentsMargins(0, 0, 0, 0)
 
-        net_interface_label = GUIFactory.create_label(self, "INTERFACE:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
-        net_interface_name = GUIFactory.create_label(self, "eth0", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        net_interface_label = Widgets.create_label(self, "INTERFACE:")
+        net_interface_name = Widgets.create_label(self, "eth0", font=Fonts.BOLD_FONT)
 
-        ip_label = GUIFactory.create_label(self, "IP:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
-        ip_address_label = GUIFactory.create_label(self, "192.168.5.5", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        ip_label = Widgets.create_label(self, "IP:")
+        ip_address_label = Widgets.create_label(self, "192.168.5.5", font=Fonts.BOLD_FONT)
 
-        netmask_label = GUIFactory.create_label(self, "MASK:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
-        netmask_address_label = GUIFactory.create_label(self, "255.255.255.0", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        netmask_label = Widgets.create_label(self, "MASK:")
+        netmask_address_label = Widgets.create_label(self, "255.255.255.0", font=Fonts.BOLD_FONT)
 
         net_settings_layout.addWidget(net_interface_label)
         net_settings_layout.addSpacerItem(QSpacerItem(H_SPACE, 0))
@@ -190,9 +204,9 @@ class PS2NetManagerGUI(QMainWindow):
         status_layout = QHBoxLayout()
         status_layout.setContentsMargins(0, 0, 0, 0)
 
-        status_label = GUIFactory.create_label(self, "STATUS DO SERVIDOR:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
+        status_label = Widgets.create_label(self, "STATUS DO SERVIDOR:")
 
-        status_value_label = GUIFactory.create_label(self, "INATIVO", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        status_value_label = Widgets.create_label(self, "INATIVO", font=Fonts.BOLD_FONT)
         status_value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         status_layout.addWidget(status_label)
@@ -202,9 +216,9 @@ class PS2NetManagerGUI(QMainWindow):
         transmition_speed_layout = QHBoxLayout()
         transmition_speed_layout.setContentsMargins(0, 0, 0, 0)
 
-        transmition_speed_label = GUIFactory.create_label(self, "VELOCIDADE DE TRANSMISSÃO:", Fonts.LIGHT_FONT, Colors.OFF_WHITE)
+        transmition_speed_label = Widgets.create_label(self, "VELOCIDADE DE TRANSMISSÃO:")
 
-        transmission_speed_value_label = GUIFactory.create_label(self, "0 KB/s", Fonts.BOLD_FONT, Colors.OFF_WHITE)
+        transmission_speed_value_label = Widgets.create_label(self, "0 KB/s", font=Fonts.BOLD_FONT)
         transmission_speed_value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         transmition_speed_layout.addWidget(transmition_speed_label)
@@ -227,31 +241,13 @@ class PS2NetManagerGUI(QMainWindow):
         buttons_layout.setContentsMargins(0, 0, 0, 0)
         buttons_layout.setSpacing(10)
 
-        change_interface_button = GUIFactory.create_button(
-            self,
-            "ALTERAR INTERFACE",
-            Fonts.BOLD_FONT,
-            Colors.DEEP_MARINE,
-            Colors.OFF_WHITE
-        )
+        change_interface_button = Widgets.create_button(self, "ALTERAR INTERFACE DE REDE")
         change_interface_button.clicked.connect(lambda: print("Change interface button clicked"))
 
-        start_button = GUIFactory.create_button(
-            self,
-            "INICIAR",
-            Fonts.BOLD_FONT,
-            Colors.LIGHT_GREEN,
-            Colors.OFF_WHITE
-        )
+        start_button = Widgets.create_button(self, "INICIAR", bg_color=Colors.LIGHT_GREEN)
         start_button.clicked.connect(lambda: print("Start button clicked"))
 
-        stop_button = GUIFactory.create_button(
-            self,
-            "PARAR",
-            Fonts.BOLD_FONT,
-            Colors.SOFT_RED,
-            Colors.OFF_WHITE
-        )
+        stop_button = Widgets.create_button(self, "PARAR", bg_color=Colors.SOFT_RED)
         stop_button.clicked.connect(lambda: print("Stop button clicked"))
 
         buttons_layout.addWidget(change_interface_button)
@@ -260,9 +256,3 @@ class PS2NetManagerGUI(QMainWindow):
         buttons_layout.addWidget(stop_button)
 
         return self.__wrap_layout(buttons_layout)
-
-
-        
-
-
-
