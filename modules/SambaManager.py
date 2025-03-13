@@ -368,6 +368,7 @@ class SambaManager:
         self.restart_server()
     
     # --- PS2 SHARE METHODS ---
+    
     def __get_ps2_default_folder_path(self) -> str:
         """Returns the default path for the PS2 share folder.
         The user_name is used to create the default shared folder path, wich is /home/#user_name/PS2SMB.
@@ -530,8 +531,10 @@ class SambaManager:
             print(Fore.RED + f"A pasta compartilhada do PS2 '{path}' não existe.")
             return False
     
-    def check_ps2_share_folder_rw(self) -> bool:
+    def check_ps2_share_folder_permissions(self) -> bool:
         """Checks if the PS2 share folder is readable and writable.
+        
+        The internal path variable is used to check the permissions.
 
         Returns:
             bool: True if the PS2 share folder is readable and writable, False otherwise.

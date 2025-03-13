@@ -73,7 +73,7 @@ class PS2NetManagerGUIController:
         self.__check_and_create_ps2_share_folder()
         
         # Now we can check if the PS2 share folder is writable and readable
-        if not self.samba_manager.check_ps2_share_folder_rw():
+        if not self.samba_manager.check_ps2_share_folder_permissions():
             err_msg = "ERRO: A pasta compartilhada do PS2 não possui permissão de leitura e escrita. Vamos corrigir isso."
             
             self.log(err_msg)
@@ -82,6 +82,7 @@ class PS2NetManagerGUIController:
             self.samba_manager.add_ps2_share_folder_permissions()
             
             msg = "As permissões foram adicionadas com sucesso."
+            
             self.log(msg)
             print(Fore.GREEN + msg)
         
@@ -202,9 +203,9 @@ class PS2NetManagerGUIController:
                     print(f"{err_msg}\n{err_description}")
                 
                 break
-        
-            # If the folder already exists, there's nothing to do
-            return
+            else:
+                # If the folder already exists, there's nothing to do
+                return
 
     def __update_server_status(self, status: bool) -> None:
         """Updates the server status label in the GUI."""
@@ -243,5 +244,3 @@ class PS2NetManagerGUIController:
             self.log(f"ERRO DESCONHECIDO: {e}")
             
             sys.exit(1)
-            
-        
