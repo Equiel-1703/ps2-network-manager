@@ -546,13 +546,16 @@ class SambaManager:
             print(Fore.RED + f"A pasta compartilhada do PS2 '{path}' não possui permissão de leitura e escrita.")
             return False
     
-    def create_ps2_share_folder(self, path: str = "") -> None:
+    def create_ps2_share_folder(self, path: str = "") -> str:
         """Creates the PS2 share folder in the specified path.
         If the path is empty, it will create the folder in the default location: /home/#user_name/PS2SMB.
         
         Args:
             path (str): The path to create the PS2 share folder. If empty, it will use the default location.
-            
+        
+        Returns:
+            str: The path of the created PS2 share folder.
+        
         Raises:
             OSError: If there was an error creating the folder.
         """
@@ -572,6 +575,8 @@ class SambaManager:
         except Exception as e:
             print(Fore.RED + f"Erro desconhecido: {e}")
             raise e
+        
+        return path
     
     def add_ps2_share_folder_permissions(self) -> None:
         """Adds read and write permissions to the PS2 share folder for all users. 

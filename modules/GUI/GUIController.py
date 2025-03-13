@@ -106,84 +106,105 @@ class PS2NetManagerGUIController:
         server_status = self.samba_manager.get_server_status()
         self.__update_server_status(server_status)
     
+    def __get_folder_path_from_file_dialog(self) -> str:
+        """Opens a file dialog to choose the folder where to create the PS2 share folder.
+        
+        Returns:
+            str: The path to the PS2 share folder chosen by the user.
+        """
+        
+        folder_path = QFileDialog.getExistingDirectory(
+            self.gui, # Parent widget
+            "Escolha onde a pasta compartilhada com o PS2 vai ficar", # Title
+            os.path.join(os.sep, "home", self.samba_manager.get_user_name()), # Start at the user's home directory
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks # Options
+        )
+        
+        if folder_path == "":
+            # User canceled the dialog
+            msg = "Operação cancelada pelo usuário."
+            
+            self.log(msg)
+            print(msg)
+
+            return ""
+        
+        # Add the folder name to the end of the path
+        # The folder name is the PS2 share name
+        folder_path = os.path.join(folder_path, self.samba_manager.PS2_SHARE_NAME)
+        
+        return folder_path
+    
     def __check_and_create_ps2_share_folder(self):
         """Checks if the PS2 share folder exists and creates it if it doesn't.
         
         It also updates the SambaManager internally with the new path.
         """
         
-        # Load the PS2 share folder path internally
-        self.samba_manager.load_from_conf_ps2_folder_path()
-        
-        # Verify if the PS2 share folder exists
-        if not self.samba_manager.check_ps2_share_folder_exists():
-            self.log("ERRO: A pasta compartilhada do PS2 não existe.")
+        while True:
+            # Load the PS2 share folder path internally
+            self.samba_manager.load_from_conf_ps2_folder_path()
             
-            # Launch a dialog to ask the user where to create the PS2 share folder
-            dialog = TODialog(
-                self.gui,
-                "Criar pasta compartilhada com o PS2",
-                "A pasta que será compartilhada com o PS2 não existe. Onde você deseja criá-la?",
-                ["Escolher...", "Local Padrão", "Cancelar"]
-            )
-            response = dialog.exec()
-            
-            print(f"Retorno do diálogo: {response}")
-            folder_path = ""
-            
-            if response == 1:
-                # User wants to choose the folder
-                # Open a file dialog to choose the folder              
-                folder_path = QFileDialog.getExistingDirectory(
-                    self.gui, # Parent widget
-                    "Escolher pasta compartilhada com o PS2", # Title
-                    os.path.join(os.sep, "home", self.samba_manager.get_user_name()), # Start at the user's home directory
-                    QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks # Options
-                )
+            # Verify if the PS2 share folder exists
+            if not self.samba_manager.check_ps2_share_folder_exists():
+                self.log("ERRO: A pasta compartilhada do PS2 não existe.")
                 
-                if folder_path == "":
-                    # User canceled the dialog
-                    msg = "Operação cancelada pelo usuário."
+                # Launch a dialog to ask the user where to create the PS2 share folder
+                dialog = TODialog(
+                    self.gui,
+                    "Criar pasta compartilhada com o PS2",
+                    "A pasta que será compartilhada com o PS2 não existe. Onde você deseja criá-la?",
+                    ["Escolher...", "Local Padrão", "Cancelar"]
+                )
+                response = dialog.exec()
+                
+                print(f"Retorno do diálogo: {response}")
+                folder_path = ""
+                
+                if response == 1:
+                    # User wants to choose the folder
+                    # Let's open a file dialog to choose the folder
+                    folder_path = self.__get_folder_path_from_file_dialog()           
                     
+                    if folder_path == "":
+                        # User canceled the dialog, restart the loop
+                        # and ask again
+                        continue
+                    
+                    # Create the folder
+                    self.samba_manager.create_ps2_share_folder(folder_path)
+                    
+                    msg = f"A pasta compartilhada com o PS2 foi criada em: {folder_path}"
                     self.log(msg)
                     print(msg)
-
+                    
+                elif response == 2:
+                    # User chose to create the folder in the default location
+                    folder_path = self.samba_manager.create_ps2_share_folder()
+                    
+                    msg = f"A pasta compartilhada com o PS2 foi criada no local padrão: {folder_path}"
+                    self.log(msg)
+                
+                else:
+                    # User canceled the operation
+                    self.log("Operação cancelada pelo usuário.")
                     sys.exit(0)
                 
-                # Add the folder name to the end of the path
-                # The folder name is the PS2 share name
-                folder_path = os.path.join(folder_path, self.samba_manager.PS2_SHARE_NAME)
+                # Now, let's save the new folder path in the configuration file and internally
+                try:
+                    self.samba_manager.set_ps2_share_folder_path(folder_path)
                 
-                # Create the folder
-                self.samba_manager.create_ps2_share_folder(folder_path)
+                except SambaServiceFailure as e:
+                    err_msg = f"ERRO DE SERVIÇO: {e}"
+                    err_description = "A pasta foi criada e o caminho foi salvo no arquivo de configuração, mas houve um erro ao reiniciar o serviço do SAMBA. Portanto, a pasta ainda não está visível na rede."
+                    
+                    self.log(f"{err_msg}\n{err_description}")
+                    print(f"{err_msg}\n{err_description}")
                 
-                msg = f"A pasta compartilhada com o PS2 foi criada em: {folder_path}"
-                self.log(msg)
-                print(msg)
-                
-            elif response == 2:
-                # User chose to create the folder in the default location
-                pass
-            
-            else:
-                # User canceled the operation
-                self.log("Operação cancelada pelo usuário.")
-                sys.exit(0)
-            
-            # Now, let's save the new folder path in the configuration file and internally
-            
-            try:
-                self.samba_manager.set_ps2_share_folder_path(folder_path)
-            
-            except SambaServiceFailure as e:
-                err_msg = f"ERRO DE SERVIÇO: {e}"
-                err_description = "A pasta foi criada e o caminho foi salvo no arquivo de configuração, mas houve um erro ao reiniciar o serviço do SAMBA. Portanto, a pasta ainda não está visível na rede."
-                
-                self.log(f"{err_msg}\n{err_description}")
-                print(f"{err_msg}\n{err_description}")
+                break
         
-        # If the folder already exists, there's nothing to do
-        return
+            # If the folder already exists, there's nothing to do
+            return
 
     def __update_server_status(self, status: bool) -> None:
         """Updates the server status label in the GUI."""
