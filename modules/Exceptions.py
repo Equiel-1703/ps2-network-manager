@@ -30,6 +30,7 @@ class GlobalSettingsNotFound(BaseManagerException):
 
 class SettingNotFound(BaseManagerException):
     def __init__(self, setting_name):
+        self.setting_name = setting_name
         self.error_message = f"Configuração '{setting_name}' não encontrada no arquivo de configuração do SAMBA."
         self.description = f"Por favor, verifique se o arquivo de configuração do SAMBA está correto e tente novamente."
         super().__init__(self.error_message, self.description)

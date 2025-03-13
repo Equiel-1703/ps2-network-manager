@@ -79,6 +79,8 @@ class PS2NetManagerGUI(QMainWindow):
         main_widget.setStyleSheet(f"background-color: {Colors.DEEP_PURPLE};")
 
         self.setCentralWidget(main_widget)
+        
+        self.gui_controller.load_samba_settings()
 
     def __wrap_layout(self, layout: QLayout) -> QWidget:
         """Helper method to wrap a layout in a QWidget."""
@@ -114,8 +116,6 @@ class PS2NetManagerGUI(QMainWindow):
         line_field.setFixedHeight(label.sizeHint().height()) # Same height as the label
         line_field.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
-        self.gui_controller.initialize_netbios_line_edit()
-
         ok_button = Widgets.create_button(self, "OK")
         ok_button.clicked.connect(self.gui_controller.on_netbios_ok_clicked)
 
@@ -135,8 +135,9 @@ class PS2NetManagerGUI(QMainWindow):
 
         label = Widgets.create_label(self, "NOME DO COMPARTILHAMENTO:")
 
-        share_name_label = Widgets.create_label(self, "PS2SMB", font=Fonts.BOLD_FONT)
+        share_name_label = Widgets.create_label(self, "", font=Fonts.BOLD_FONT)
         share_name_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        share_name_label.setObjectName(WN.SHARE_NAME_LABEL.value)
         
         share_name_layout.addWidget(label)
         share_name_layout.addWidget(share_name_label)
@@ -149,9 +150,10 @@ class PS2NetManagerGUI(QMainWindow):
 
         shared_folder_label = Widgets.create_label(self, "PASTA COMPARTILHADA:")
 
-        shared_folder_path = Widgets.create_label(self, "/home/user/ps2smb", font=Fonts.BOLD_FONT)
+        shared_folder_path = Widgets.create_label(self, "", font=Fonts.BOLD_FONT)
         shared_folder_path.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         shared_folder_path.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        shared_folder_path.setObjectName(WN.SHARE_FOLDER_PATH.value)
 
         change_folder_button = Widgets.create_button(self, "ALTERAR")
         change_folder_button.clicked.connect(lambda: print("Change folder button clicked"))
@@ -216,8 +218,9 @@ class PS2NetManagerGUI(QMainWindow):
 
         status_label = Widgets.create_label(self, "STATUS DO SERVIDOR:")
 
-        status_value_label = Widgets.create_label(self, "INATIVO", font=Fonts.BOLD_FONT)
+        status_value_label = Widgets.create_label(self, "", font=Fonts.BOLD_FONT)
         status_value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        status_value_label.setObjectName(WN.SERVER_STATUS_LABEL.value)
 
         status_layout.addWidget(status_label)
         status_layout.addWidget(status_value_label)
