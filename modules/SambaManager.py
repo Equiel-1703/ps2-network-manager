@@ -8,8 +8,15 @@ from modules.Exceptions import *
 class SambaManager:
     SAMBA_CONF_PATH = "/etc/samba/smb.conf"
     DEFAULT_NETBIOS_NAME = "SAMBA"
+    PS2_SHARE_NAME = "PS2SMB"
 
+    # This is the default configuration for the PS2 share.
+    # The path is not set here because it can only be set after the user name is obtained in the constructor.
+    
+    
     __netbios_name = ""
+    __user_name = ""
+    __shared_ps2_folder_path = ""
 
     def __init__(self, debug=False):
         self.debug = debug
@@ -17,6 +24,19 @@ class SambaManager:
         # Check if samba config file exists
         if not os.path.exists(self.SAMBA_CONF_PATH):
             raise SambaConfNotFound(self.SAMBA_CONF_PATH)
+        
+        # Get user name
+        try:
+            self.__user_name = os.getlogin()
+        except OSError:
+            print(Fore.RED + "ERRO: Não foi possível obter o nome de usuário do sistema.")
+            sys.exit(1)
+        except Exception as e:
+            print(Fore.RED + f"ERRO DESCONHECIDO: {e}")
+            sys.exit(1)
+            
+        if self.debug:
+            print(Fore.LIGHTGREEN_EX + f"Nome de usuário do sistema: {self.__user_name}")
 
     def __read_samba_conf(self) -> list:
         """Reads the SAMBA configuration file and returns its contents as a list of strings, removing comments and blank lines.
@@ -45,7 +65,9 @@ class SambaManager:
         
         Returns:
             str: The content of the tag.
-            None: If the tag is not found.
+        
+        Raises:
+            TagNotFound: If the tag is not found in the configuration file.
         """
 
         tag_data = re.search(rf"\[{tag}\]\s*(?P<tag_data>.*?)(?=\[|$)", conf_data, flags=re.DOTALL)
@@ -53,7 +75,7 @@ class SambaManager:
         if tag_data is not None:
             return tag_data.group("tag_data")
         else:
-            return None
+            raise TagNotFound(tag)
     
     def __update_tag_content(self, tag: str, new_content: list, conf_data: str) -> str:
         """Updates the content of a tag in a configuration file.
@@ -165,6 +187,7 @@ class SambaManager:
 
         if self.debug:
             print()
+            print(Fore.CYAN + "Verificando a seção [global] do arquivo de configuração do SAMBA...")
             print(Fore.CYAN + f"Dados lidos de {self.SAMBA_CONF_PATH}:")
             for line in conf_data:
                 print(line, end='')
@@ -254,6 +277,178 @@ class SambaManager:
             print(conf_data.strip())
             print()
     
+    def __get_default_ps2_share_settings(self, user_name) -> list:
+        """Returns the default settings for the PS2 share configuration.
+        The user_name is used to create the default shared folder path, wich is /home/#user_name/PS2SMB.
+        
+        Args:
+            user_name (str): The user name of the system.
+        Returns:
+            list: The default settings for the PS2 share configuration.
+        """
+        
+        ps2_default_settings = [
+            "comment = Pasta compartilhada com o PS2",
+            "guest ok = yes",
+            "read only = no",
+            "writeable = yes",
+            "browseable = yes",
+            "create mask = 0777",
+            "directory mask = 0777"
+        ]
+        
+        # Creating default folder path: /home/<user_name>/PS2SMB
+        default_shared_folder = os.path.join(os.pathsep, "home", user_name, self.PS2_SHARE_NAME)
+        
+        # Add path to the default settings
+        ps2_default_settings.insert(1, f"path = {default_shared_folder}")
+        
+        return ps2_default_settings
+    
+    def __get_default_ps2_share_settings_regex(self) -> list:
+        """Uses the default settings for the PS2 share configuration to create regexes and validate the configuration.
+        These regexes are used to check if the configuration is correct in the SAMBA configuration file.
+
+        Returns:
+            list: The default settings for the PS2 share configuration as regexes. Comments and path settings are ignored.
+        """
+        
+        default_settings = self.__get_default_ps2_share_settings(self.__user_name)
+        
+        # Creating regex for the default settings
+        
+        ps2_default_settings_regex = []
+        for setting in default_settings:
+            # Ignoring the path and comment settings
+            if setting.startswith("path = ") or setting.startswith("comment = "):
+                continue
+            
+            # Creating regex for the setting
+            setting_regex = "\\s*" + setting.strip()
+            
+            ps2_default_settings_regex.append(setting_regex)
+        
+        return ps2_default_settings_regex
+    
+    def check_ps2_share_settings(self) -> None:
+        """Checks if the PS2 share configuration is correct in the SAMBA configuration file for communicating with the PS2.
+        If the configuration is not correct, it raises an exception.
+        
+        Raises:
+            TagNotFound: If the [PS2SMB] section is not found in the SAMBA configuration file.
+            SettingNotFound: If any of the settings are not found in the [PS2SMB] section.
+            PS2ShareFolderNotFound: If the shared folder path does not exist.
+        """
+        
+        conf_data = self.__read_samba_conf()
+        conf_data = "".join(conf_data)
+        
+        if self.debug:
+            print()
+            print(Fore.CYAN + "Verificando a seção [PS2SMB] do arquivo de configuração do SAMBA...")
+            print(Fore.CYAN + f"Dados lidos de {self.SAMBA_CONF_PATH}:")
+            print(conf_data)
+            print()
+        
+        # If the share config [PS2SMB] is not found, this line will raise an exception and stop the execution
+        share_config_data = self.__extract_tag_content(self.PS2_SHARE_NAME, conf_data)
+        
+        if self.debug:
+            print(Fore.CYAN + f"Dados lidos da seção [{self.PS2_SHARE_NAME}]:")
+            print(share_config_data)
+        
+        # If the share config was found, we'll first check for the path
+        folder_path_regex = r"\s*path = (.*)"
+        
+        folder_path = re.search(folder_path_regex, share_config_data)
+        if folder_path == None:
+            # If the path is not found, we raise this exception
+            raise SettingNotFound("path")
+
+        # If the path was found, we'll check if it exists
+        folder_path = folder_path.group(1).strip()
+        
+        if not os.path.exists(folder_path):
+            # If the path doesn't exist, we raise this exception
+            raise PS2ShareFolderNotFound(folder_path)
+        
+        # If the path was found and exists, we'll check for the other settings using generated regexes
+        other_settings_regexes = self.__get_default_ps2_share_settings_regex()
+        
+        for regex in other_settings_regexes:
+            if not re.search(regex, share_config_data):
+                raise SettingNotFound(regex.split("=")[0].strip())
+        
+        # If everything is ok, this will be printed
+        print(Fore.GREEN + "Configuração de compartilhamento do PS2 está correta.")
+    
+    def create_default_ps2_share_config(self) -> None:
+        """Creates the PS2 share configuration with the default settings in the SAMBA configuration file."""
+        
+        # Reading the SAMBA configuration file
+        conf_data = self.__read_samba_conf()
+
+        # Updating the PS2 share configuration in the SAMBA configuration file
+        conf_data = self.__update_tag_content(self.PS2_SHARE_NAME, self.PS2_DEFAULT_SHARE_SETTINGS, "".join(conf_data))
+
+        # Writing the new configuration file
+        conf_file = open(self.SAMBA_CONF_PATH, "w")
+        conf_file.write(conf_data)
+        conf_file.close()
+
+        print(Fore.GREEN + f"Configuração de compartilhamento do PS2 criada com sucesso em {self.SAMBA_CONF_PATH}!")
+        
+        if self.debug:
+            print()
+            print(Fore.CYAN + "Dados da configuração de compartilhamento do PS2:")
+            for line in self.PS2_DEFAULT_SHARE_SETTINGS:
+                print(line)
+            print()
+    
+    def get_ps2_share_folder_path(self) -> str:
+        """Returns the path of the PS2 share folder.
+
+        Returns:
+            str: The path of the PS2 share folder.
+        """
+        
+        if self.__shared_ps2_folder_path == "":
+            conf_data = self.__read_samba_conf()
+            conf_data = "".join(conf_data)
+            self.__shared_ps2_folder_path = self.__extract_setting_from_tag(self.PS2_SHARE_NAME, "path", conf_data)
+        
+        return self.__shared_ps2_folder_path
+
+    def set_ps2_share_folder_path(self, path: str) -> None:
+        """Sets the path of the PS2 share folder.
+
+        Args:
+            path (str): The new path of the PS2 share folder.
+
+        Raises:
+            ValueError: If the path is empty or doesn't exist.
+            SambaServiceFailure: If the service restart command returns a non-zero value.
+        """
+        
+        if path == "":
+            raise ValueError("O caminho da pasta compartilhada não pode ser vazio.")
+        elif not os.path.exists(path):
+            raise ValueError("O caminho da pasta compartilhada não existe.")
+        
+        conf_data = self.__read_samba_conf()
+        conf_data = self.__update_setting_in_tag(self.PS2_SHARE_NAME, "path", path, "".join(conf_data))
+
+        conf_file = open(self.SAMBA_CONF_PATH, "w")
+        conf_file.write(conf_data)
+        conf_file.close()
+
+        self.__shared_ps2_folder_path = path
+        
+        print(Fore.GREEN + f"Caminho da pasta compartilhada alterado para '{path}' com sucesso!")
+        
+        # Restart server to changes take effect
+        self.restart_server()
+    
     def start_server(self) -> int:
         """Starts the SAMBA and NetBIOS service.
 
@@ -328,6 +523,7 @@ class SambaManager:
 
         Raises:
             ValueError: If the NetBIOS name is the same, empty, has more than 15 characters or contains invalid characters.
+            SambeServiceFailure: If the service restart command returns a non-zero value.
         """
 
         self.__validate_netbios_name(netbios_name)
@@ -343,8 +539,8 @@ class SambaManager:
         conf_file.close()
 
         self.__netbios_name = netbios_name
-
+        
+        print(Fore.GREEN + f"Nome NetBIOS alterado para '{netbios_name}' com sucesso!")
+        
         # Restart server to changes take effect
         self.restart_server()
-
-        print(Fore.GREEN + f"Nome NetBIOS alterado para '{netbios_name}' com sucesso!")
