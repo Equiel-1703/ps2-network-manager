@@ -502,8 +502,10 @@ class SambaManager:
         path = self.get_ps2_share_folder_path()
         
         if os.path.exists(path):
+            print(Fore.GREEN + f"A pasta compartilhada do PS2 '{path}' existe.")
             return True
         else:
+            print(Fore.RED + f"A pasta compartilhada do PS2 '{path}' não existe.")
             return False
     
     def check_ps2_share_folder_rw(self) -> bool:
