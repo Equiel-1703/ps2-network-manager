@@ -1,8 +1,10 @@
+import sys
 from PyQt6.QtWidgets import *
-from modules.SambaManager import SambaManager
 
+from modules.SambaManager import SambaManager
 from modules.GUI.GUIInterface import GUIInterface
 from modules.GUI.WidgetsNames import WidgetsNames as WN
+from modules.Exceptions import *
 
 class PS2NetManagerGUIController:
     """This class handles the logic for events in the 'PS2 Network Manager' GUI."""
@@ -17,7 +19,7 @@ class PS2NetManagerGUIController:
     def log(self, text: str):
         """Logs a message to the log display widget."""
         
-        self.log_display_widget.appendPlainText(text)
+        self.log_display_widget.appendPlainText(f"\n{text}")
     
     def initialize_netbios_line_edit(self):
         """Initializes the NetBIOS name line edit with the current NetBIOS name."""
@@ -38,4 +40,18 @@ class PS2NetManagerGUIController:
         
         except ValueError as e:
             self.log(f"ERRO: {e}")
+            
+            # Put old NetBIOS name back
+            line_edit.setText(self.samba_manager.get_netbios_name())
+            
+        except SambaServiceFailure as e:
+            self.log(f"ERRO DE SERVIÇO: {e}")
+            
+            self.log("O nome foi alterado no arquivo de configuração, mas houve um erro ao reiniciar o serviço do SAMBA. Portanto, o novo nome ainda não está visível na rede.")        
+        except Exception as e:
+            self.log(f"ERRO DESCONHECIDO: {e}")
+            
+            # Put old NetBIOS name back
+            sys.exit(1)
+            
         
