@@ -68,7 +68,7 @@ class SambaManager:
         Returns:
             bool: True if the tag exists, False otherwise.
         """
-        tag_data = re.search(rf"\[{tag.strip()}\]\s*(?=\[|$)", conf_data)
+        tag_data = re.search(rf"\[{tag.strip()}\]\s*", conf_data)
 
         if tag_data is not None:
             return True
@@ -211,6 +211,14 @@ class SambaManager:
             raise ValueError("O nome NetBIOS não pode ter mais de 15 caracteres.")
         elif not re.match(r"[a-zA-Z0-9][a-zA-Z0-9\-\.]*[a-zA-Z0-9]", netbios_name):
             raise ValueError("O nome NetBIOS só pode conter letras, números, hífens e pontos. Não deve ter espaços nem caracteres especiais. Deve começar e terminar com letras ou números e não pode ultrapassar 15 caracteres.")
+
+    def get_user_name(self) -> str:
+        """Returns the user name of the system.
+
+        Returns:
+            str: The user name of the system.
+        """
+        return self.__user_name
 
     # --- GLOBAL SAMBA METHODS ---
 
@@ -360,6 +368,18 @@ class SambaManager:
         self.restart_server()
     
     # --- PS2 SHARE METHODS ---
+    def __get_ps2_default_folder_path(self) -> str:
+        """Returns the default path for the PS2 share folder.
+        The user_name is used to create the default shared folder path, wich is /home/#user_name/PS2SMB.
+        
+        Returns:
+            str: The default path for the PS2 share folder.
+        """
+        
+        # Creating default folder path: /home/<user_name>/PS2SMB
+        ps2_default_folder_location = os.path.join(os.sep, "home", self.__user_name, self.PS2_SHARE_NAME)
+        
+        return ps2_default_folder_location
     
     def __get_default_ps2_share_settings(self) -> list:
         """Returns the default settings for the PS2 share configuration.
@@ -379,7 +399,7 @@ class SambaManager:
         ]
         
         # Creating default folder path: /home/<user_name>/PS2SMB
-        default_shared_folder = os.path.join(os.sep, "home", self.__user_name, self.PS2_SHARE_NAME)
+        default_shared_folder = self.__get_ps2_default_folder_path()
         
         # Add path to the default settings
         ps2_default_settings.insert(1, f"path = {default_shared_folder}")
@@ -412,8 +432,10 @@ class SambaManager:
         return ps2_default_settings_regex
     
     def check_ps2_share_settings(self) -> None:
-        """Checks if the PS2 share configuration is correct in the SAMBA configuration file for communicating with the PS2.
-        If the configuration is not correct, it raises an exception. THIS METHOD ONLY CHECKS IF THE PATH IS SET, IT DOESN'T CHECK IF IT IS CORRECT OR EXISTS.
+        """Checks if the PS2 share configurations are correct in the SAMBA configuration file for communicating with the PS2.
+        If any configuration is incorrect, an exception is raised.
+        
+        Regarding the path, THIS METHOD ONLY CHECKS IF THE PATH IS SET. IT DOESN'T CHECK IF IT IS CORRECT OR EXISTS.
         
         If the configuration is correct, it prints a success message.
         
@@ -475,7 +497,7 @@ class SambaManager:
         # Getting the default settings for the PS2 share configuration
         default_settings = self.__get_default_ps2_share_settings()
         
-        # If the tag exists, we replace it with the default settings
+        # Replacing the old settings with the default settings
         conf_data = self.__update_tag_content(self.PS2_SHARE_NAME, default_settings, conf_data)
         
         # Writing the new configuration file
@@ -524,22 +546,73 @@ class SambaManager:
             print(Fore.RED + f"A pasta compartilhada do PS2 '{path}' não possui permissão de leitura e escrita.")
             return False
     
+    def create_ps2_share_folder(self, path: str = "") -> None:
+        """Creates the PS2 share folder in the specified path.
+        If the path is empty, it will create the folder in the default location: /home/#user_name/PS2SMB.
+        
+        Args:
+            path (str): The path to create the PS2 share folder. If empty, it will use the default location.
+            
+        Raises:
+            OSError: If there was an error creating the folder.
+        """
+        
+        if path == "":
+            path = self.__get_ps2_default_folder_path()
+        
+        try:
+            os.makedirs(path, exist_ok=True)
+            os.chmod(path, 0o777)
+            print(Fore.GREEN + f"Pasta compartilhada do PS2 criada com sucesso em '{path}'!")
+        
+        except OSError as e:
+            print(Fore.RED + f"Erro ao criar a pasta compartilhada do PS2: {e}")
+            raise e
+        
+        except Exception as e:
+            print(Fore.RED + f"Erro desconhecido: {e}")
+            raise e
+    
+    def add_ps2_share_folder_permissions(self) -> None:
+        """Adds read and write permissions to the PS2 share folder for all users. 
+        
+        The permissions are set to 0777 (read, write, execute for owner, group and others).
+        """
+        
+        os.chmod(self.__shared_ps2_folder_path, 0o777)
+        
+        print(Fore.GREEN + f"Permissões de leitura e escrita adicionadas à pasta compartilhada do PS2 '{path}'!")
+    
+    def load_from_conf_ps2_folder_path(self) -> None:
+        """Loads the PS2 share folder path from the SAMBA configuration file into the internal variable.
+        
+        The path is extracted from the [PS2SMB] section of the configuration file.
+        If the path is not found, it will be set to an empty string.
+        """
+        
+        conf_data = self.__read_samba_conf()
+        conf_data = "".join(conf_data)
+        
+        try:
+            self.__shared_ps2_folder_path = self.__extract_setting_from_tag(self.PS2_SHARE_NAME, "path", conf_data)
+        
+        except SettingNotFound:
+            self.__shared_ps2_folder_path = ""
+    
     def get_ps2_share_folder_path(self) -> str:
-        """Returns the path of the PS2 share folder.
-
+        """Returns the path of the PS2 share folder from the internal variable. If it is not set, it will be loaded from the SAMBA configuration file.
+        
         Returns:
             str: The path of the PS2 share folder.
         """
         
         if self.__shared_ps2_folder_path == "":
-            conf_data = self.__read_samba_conf()
-            conf_data = "".join(conf_data)
-            self.__shared_ps2_folder_path = self.__extract_setting_from_tag(self.PS2_SHARE_NAME, "path", conf_data)
+            self.load_from_conf_ps2_folder_path()
         
         return self.__shared_ps2_folder_path
 
     def set_ps2_share_folder_path(self, path: str) -> None:
-        """Sets the path of the PS2 share folder.
+        """Sets the path of the PS2 share folder in the SAMBA configuration file and in the internal variable.
 
         Args:
             path (str): The new path of the PS2 share folder.

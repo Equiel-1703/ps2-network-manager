@@ -13,6 +13,11 @@ from modules.SambaManager import SambaManager
 class WindowDimensions(Enum):
     WIDTH = 800
     HEIGHT = 650
+    
+    @staticmethod
+    def rect():
+        """Returns a QRect object with the specified width and height."""
+        return QRect(0, 0, WindowDimensions.WIDTH.value, WindowDimensions.HEIGHT.value)
 
 class MainLayoutSettings(Enum):
     MARGIN = 10
@@ -26,12 +31,7 @@ class PS2NetManagerGUI(QMainWindow):
         self.setWindowTitle("PS2 Network Manager")
 
         # Center window on screen
-        window_rec = QRect(
-            0,
-            0,
-            WindowDimensions.WIDTH.value,
-            WindowDimensions.HEIGHT.value
-        )
+        window_rec = WindowDimensions.rect()
         window_rec.moveCenter(QApplication.primaryScreen().geometry().center())
 
         self.setGeometry(window_rec)
@@ -79,7 +79,13 @@ class PS2NetManagerGUI(QMainWindow):
         main_widget.setStyleSheet(f"background-color: {Colors.DEEP_PURPLE};")
 
         self.setCentralWidget(main_widget)
+    
+    def show(self):
+        """Override the show method to load the Samba settings when the window is shown."""
         
+        super().show()
+        
+        # Load Samba settings
         self.gui_controller.load_samba_settings()
 
     def __wrap_layout(self, layout: QLayout) -> QWidget:
