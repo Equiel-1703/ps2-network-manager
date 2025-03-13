@@ -582,11 +582,13 @@ class SambaManager:
         """Adds read and write permissions to the PS2 share folder for all users. 
         
         The permissions are set to 0777 (read, write, execute for owner, group and others).
+        
+        The internal path variable is used to set the permissions.
         """
         
         os.chmod(self.__shared_ps2_folder_path, 0o777)
         
-        print(Fore.GREEN + f"Permissões de leitura e escrita adicionadas à pasta compartilhada do PS2 '{path}'!")
+        print(Fore.GREEN + f"Permissões de leitura e escrita adicionadas à pasta compartilhada do PS2 '{self.__shared_ps2_folder_path}'!")
     
     def load_from_conf_ps2_folder_path(self) -> None:
         """Loads the PS2 share folder path from the SAMBA configuration file into the internal variable.
