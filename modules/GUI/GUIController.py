@@ -244,3 +244,59 @@ class PS2NetManagerGUIController:
             self.log(f"ERRO DESCONHECIDO: {e}")
             
             sys.exit(1)
+
+    def on_change_folder_button_clicked(self):
+        """Handles the 'Change Folder' button click event."""
+        
+        # Launch a dialog to ask the user where to create the PS2 share folder
+        dialog = TODialog(
+            self.gui,
+            "Criar pasta compartilhada com o PS2",
+            "Onde você deseja criar a pasta compartilhada com o PS2?",
+            ["Escolher...", "Local Padrão", "Cancelar"]
+        )
+        response = dialog.exec()
+        
+        folder_path = ""
+        if response == 1:
+            # User wants to choose the folder
+            # Let's open a file dialog to choose the folder
+            folder_path = self.__get_folder_path_from_file_dialog()           
+            
+            if folder_path == "":
+                # User canceled the dialog, restart the loop
+                return
+            
+            # Create the folder
+            self.samba_manager.create_ps2_share_folder(folder_path)
+            
+            msg = f"A pasta compartilhada com o PS2 foi criada em: {folder_path}"
+            self.log(msg)
+            
+        elif response == 2:
+            # User chose to create the folder in the default location
+            folder_path = self.samba_manager.create_ps2_share_folder()
+            
+            msg = f"A pasta compartilhada com o PS2 foi criada no local padrão: {folder_path}"
+            self.log(msg)
+            
+        else:
+            # User canceled the operation
+            self.log("Operação cancelada pelo usuário.")
+            return
+        
+        # Now, let's save the new folder path in the configuration file and internally
+        try:
+            
+            self.samba_manager.set_ps2_share_folder_path(folder_path)
+        
+        except SambaServiceFailure as e:
+            err_msg = f"ERRO DE SERVIÇO: {e}"
+            err_description = "A pasta foi criada e o caminho foi salvo no arquivo de configuração, mas houve um erro ao reiniciar o serviço do SAMBA. Portanto, a pasta ainda não está visível na rede."
+            
+            self.log(f"{err_msg}\n{err_description}")
+        
+        finally:
+            # Update the label in the GUI
+            share_folder_path_label = self.gui.findChild(QLabel, WN.SHARE_FOLDER_PATH.value)
+            share_folder_path_label.setText(folder_path)

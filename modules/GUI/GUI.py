@@ -162,8 +162,8 @@ class PS2NetManagerGUI(QMainWindow):
         shared_folder_path.setObjectName(WN.SHARE_FOLDER_PATH.value)
 
         change_folder_button = Widgets.create_button(self, "ALTERAR")
-        change_folder_button.clicked.connect(lambda: print("Change folder button clicked"))
-
+        change_folder_button.setObjectName(WN.CHANGE_FOLDER_BUTTON.value)
+        change_folder_button.clicked.connect(self.gui_controller.on_change_folder_button_clicked)
         shared_folder_layout.addWidget(shared_folder_label)
         shared_folder_layout.addWidget(shared_folder_path)
         shared_folder_layout.addWidget(change_folder_button)

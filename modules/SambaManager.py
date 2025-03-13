@@ -1,6 +1,10 @@
 import os
 import re
 import sys
+import pwd
+import grp
+import psutil
+import socket
 from colorama import Fore
 
 from modules.Exceptions import *
@@ -71,6 +75,26 @@ class SambaManager:
         tag_data = re.search(rf"\[{tag.strip()}\]\s*", conf_data)
 
         if tag_data is not None:
+            return True
+        else:
+            return False
+
+    def __check_if_setting_exists(self, tag: str, setting: str, conf_data: str) -> bool:
+        """Checks if a setting exists in a tag in a configuration file.
+
+        Args:
+            tag (str): The tag to search for.
+            setting (str): The setting to search for in the tag.
+            conf_data (str): The configuration file data as a unique string.
+        
+        Returns:
+            bool: True if the setting exists, False otherwise.
+        """
+        
+        tag_data = self.__extract_tag_content(tag, conf_data)
+        setting_data = re.search(rf"\s*{setting} = .*", tag_data)
+
+        if setting_data is not None:
             return True
         else:
             return False
@@ -147,6 +171,8 @@ class SambaManager:
     
     def __update_setting_in_tag(self, tag: str, setting: str, new_value: str, conf_data: str) -> str:
         """Updates a setting in a tag in a configuration file.
+        
+        If the setting doesn't exist, it will be added at the end of the tag.
 
         Args:
             tag (str): The tag to search for.
@@ -163,8 +189,12 @@ class SambaManager:
         # Escape backslashes in new value for setting
         new_value = new_value.replace("\\", "\\\\")
 
-        # Update setting
-        tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}", tag_data)
+        if not self.__check_if_setting_exists(tag, setting, conf_data):
+            # If the setting doesn't exist, we add it to the end of the tag
+            tag_data += f"\n   {setting} = {new_value}"
+        else:
+            # If the setting exists, we update it
+            tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}", tag_data)
 
         # Update tag content in configuration data
         conf_data = self.__update_tag_content(tag, tag_data.split("\n"), conf_data)
@@ -219,6 +249,19 @@ class SambaManager:
             str: The user name of the system.
         """
         return self.__user_name
+
+    def get_user_info(self) -> dict:
+        """Returns the user id and group id of the system user.
+        
+        Returns:
+            dict: A dictionary with the user id and group id of the system user.
+        """
+        user_info = pwd.getpwnam(self.__user_name)
+        
+        return {
+            "user_id": user_info.pw_uid,
+            "group_id": user_info.pw_gid
+        }
 
     # --- GLOBAL SAMBA METHODS ---
 
@@ -568,7 +611,12 @@ class SambaManager:
         
         try:
             os.makedirs(path, exist_ok=True)
+            
+            user_info = self.get_user_info()
+            os.chown(path, user_info["user_id"], user_info["group_id"])
+            
             os.chmod(path, 0o777)
+            
             print(Fore.GREEN + f"Pasta compartilhada do PS2 criada com sucesso em '{path}'!")
         
         except OSError as e:
@@ -588,6 +636,9 @@ class SambaManager:
         
         The internal path variable is used to set the permissions.
         """
+        
+        user_info = self.get_user_info()
+        os.chown(self.__shared_ps2_folder_path, user_info["user_id"], user_info["group_id"])
         
         os.chmod(self.__shared_ps2_folder_path, 0o777)
         
@@ -647,6 +698,73 @@ class SambaManager:
         self.__shared_ps2_folder_path = path
         
         print(Fore.GREEN + f"Caminho da pasta compartilhada alterado para '{path}' com sucesso!")
+        
+        # Restart server to changes take effect
+        self.restart_server()
+    
+    # --- NETWORK INTERFACE METHODS ---
+    
+    def get_network_interfaces(self) -> list:
+        """Returns a list of network interfaces available on the system.
+
+        Returns:
+            list: A list of network interfaces available on the system.
+        """
+        
+        interfaces = psutil.net_if_addrs()
+        interface_list = []
+        
+        for interface in interfaces:
+            interface_list.append(interface)
+        
+        return interface_list
+    
+    def get_ipv4_addresses_for_interface(self, interface: str) -> list:
+        """Returns a list of IPv4 addresses along with their masks for a given network interface.
+
+        Args:
+            interface (str): The name of the network interface.
+
+        Returns:
+            list: A list of tuples containing the IPv4 address and its mask for the given network interface.
+            If the interface is not found, an empty list is returned.
+        """
+        
+        interfaces = psutil.net_if_addrs()
+        ipv4_addresses = []
+        
+        if interface in interfaces:
+            for addr in interfaces[interface]:
+                if addr.family == socket.AF_INET:  # AF_INET (IPv4)
+                    ipv4_addresses.append((addr.address, addr.netmask))
+        
+        return ipv4_addresses
+    
+    def set_interface_in_samba_conf(self, interface: str, ip: str) -> None:
+        """Sets the network interface and IP address in the SAMBA configuration file.
+
+        Args:
+            interface (str): The name of the network interface.
+            ip (str): The IP address to set for the interface.
+
+        Raises:
+            SambaServiceFailure: If the service restart command returns a non-zero value.
+        """
+        
+        conf_data = self.__read_samba_conf()
+        conf_data = "".join(conf_data)
+        
+        # Adding the interface and IP address to the [global] section
+        conf_data = self.__update_setting_in_tag("global", "interfaces", f"{interface} {ip}", conf_data)
+        # Adding binding to the interface
+        conf_data = self.__update_setting_in_tag("global", "bind interfaces only", "yes", conf_data)
+        
+        # Writing the new configuration file
+        conf_file = open(self.SAMBA_CONF_PATH, "w")
+        conf_file.write(conf_data)
+        conf_file.close()
+        
+        print(Fore.GREEN + f"Interface {interface} e IP {ip} adicionados à configuração do SAMBA com sucesso!")
         
         # Restart server to changes take effect
         self.restart_server()
