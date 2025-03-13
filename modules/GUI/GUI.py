@@ -86,7 +86,7 @@ class PS2NetManagerGUI(QMainWindow):
         super().show()
         
         # Load Samba settings
-        self.gui_controller.load_samba_settings()
+        self.gui_controller.setup_samba_settings()
 
     def __wrap_layout(self, layout: QLayout) -> QWidget:
         """Helper method to wrap a layout in a QWidget."""
@@ -186,13 +186,16 @@ class PS2NetManagerGUI(QMainWindow):
         net_settings_layout.setContentsMargins(0, 0, 0, 0)
 
         net_interface_label = Widgets.create_label(self, "INTERFACE:")
-        net_interface_name = Widgets.create_label(self, "eth0", font=Fonts.BOLD_FONT)
-
+        net_interface_name = Widgets.create_label(self, "", font=Fonts.BOLD_FONT)
+        net_interface_name.setObjectName(WN.INTERFACE_NAME_LABEL.value)
+        
         ip_label = Widgets.create_label(self, "IP:")
-        ip_address_label = Widgets.create_label(self, "192.168.5.5", font=Fonts.BOLD_FONT)
+        ip_address_label = Widgets.create_label(self, "", font=Fonts.BOLD_FONT)
+        ip_address_label.setObjectName(WN.INTERFACE_IP_LABEL.value)
 
         netmask_label = Widgets.create_label(self, "MASK:")
-        netmask_address_label = Widgets.create_label(self, "255.255.255.0", font=Fonts.BOLD_FONT)
+        netmask_address_label = Widgets.create_label(self, "", font=Fonts.BOLD_FONT)
+        netmask_address_label.setObjectName(WN.INTERFACE_MASK_LABEL.value)
 
         net_settings_layout.addWidget(net_interface_label)
         net_settings_layout.addSpacerItem(QSpacerItem(H_SPACE, 0))

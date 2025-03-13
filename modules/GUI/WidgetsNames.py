@@ -9,6 +9,10 @@ class WidgetsNames(Enum):
     
     CHANGE_FOLDER_BUTTON = "change_folder_button"
     
+    INTERFACE_NAME_LABEL = "interface_name_label"
+    INTERFACE_IP_LABEL = "interface_ip_label"
+    INTERFACE_MASK_LABEL = "interface_mask_label"
+    
     START_SERVER_BUTTON = "start_server_button"
     STOP_SERVER_BUTTON = "stop_server_button"
     CHANGE_INTERFACE_BUTTON = "change_interface_button"

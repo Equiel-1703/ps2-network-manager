@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt
 
 from modules.GUI.GUIFactory import GUIFactory
 from modules.GUI.GUIColors import GUIColors as Colors
@@ -36,3 +37,27 @@ class GUICustomWidgets:
         """Creates a horizontal line with the specified parent. It has a light gold color by default."""
         
         return GUIFactory.create_hline(parent, color)
+    
+    @staticmethod
+    def create_selectable_list(parent: QWidget, font: QFont = Fonts.REGULAR_FONT) -> QListWidget:
+        """Creates a selectable list with the specified parent. By default, it uses the regular font."""
+        
+        list_widget = QListWidget(parent)
+        list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        list_widget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        list_widget.setFont(Fonts.REGULAR_FONT)
+        
+        list_widget.setStyleSheet(f"""
+            QListWidget {{ 
+                background-color: {Colors.OFF_WHITE}; 
+                color: {Colors.OFF_BLACK}; 
+            }}
+            
+            QListWidget::item:selected {{
+                background-color: {Colors.DARK_LAVENDER}; 
+                color: {Colors.OFF_WHITE}; 
+            }}
+        """)
+        
+        return list_widget

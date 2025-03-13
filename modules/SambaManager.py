@@ -191,10 +191,10 @@ class SambaManager:
 
         if not self.__check_if_setting_exists(tag, setting, conf_data):
             # If the setting doesn't exist, we add it to the end of the tag
-            tag_data += f"\n   {setting} = {new_value}"
+            tag_data += f"\n   {setting} = {new_value}\n"
         else:
             # If the setting exists, we update it
-            tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}", tag_data)
+            tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}\n", tag_data)
 
         # Update tag content in configuration data
         conf_data = self.__update_tag_content(tag, tag_data.split("\n"), conf_data)
@@ -704,7 +704,7 @@ class SambaManager:
     
     # --- NETWORK INTERFACE METHODS ---
     
-    def get_network_interfaces(self) -> list:
+    def get_available_network_interfaces(self) -> list:
         """Returns a list of network interfaces available on the system.
 
         Returns:
@@ -715,6 +715,9 @@ class SambaManager:
         interface_list = []
         
         for interface in interfaces:
+            if interface == "lo":
+                continue
+            
             interface_list.append(interface)
         
         return interface_list
@@ -739,6 +742,59 @@ class SambaManager:
                     ipv4_addresses.append((addr.address, addr.netmask))
         
         return ipv4_addresses
+    
+    def check_if_ip_is_valid(self, ip: str) -> bool:
+        """Checks if the provided IPv4 address is valid.
+
+        Args:
+            ip (str): The IP address to check.
+
+        Returns:
+            bool: True if the IP address is valid, False otherwise.
+        """
+        
+        try:
+            socket.inet_pton(socket.AF_INET, ip)
+            
+            return True
+        except socket.error:
+            return False
+    
+    def check_if_ip_is_bound(self, ip: str, interface: str) -> bool:
+        """Checks if the provided IPv4 address is bound to the specified network interface.
+
+        Args:
+            ip (str): The IP address to check.
+            interface (str): The name of the network interface.
+
+        Returns:
+            bool: True if the IP address is bound to the specified network interface, False otherwise.
+        """
+        
+        ipv4_addresses = self.get_ipv4_addresses_for_interface(interface)
+        
+        for addr in ipv4_addresses:
+            if addr[0] == ip:
+                return True
+        
+        return False
+    
+    def check_if_interface_exists(self, interface: str) -> bool:
+        """Checks if a network interface exists on the system.
+
+        Args:
+            interface (str): The name of the network interface.
+
+        Returns:
+            bool: True if the network interface exists, False otherwise.
+        """
+        
+        interfaces = psutil.net_if_addrs()
+        
+        if interface in interfaces:
+            return True
+        else:
+            return False
     
     def set_interface_in_samba_conf(self, interface: str, ip: str) -> None:
         """Sets the network interface and IP address in the SAMBA configuration file.
@@ -768,6 +824,30 @@ class SambaManager:
         
         # Restart server to changes take effect
         self.restart_server()
+    
+    def get_interfaces_in_samba_conf(self) -> list[str]:
+        """Returns the network interfaces set in the SAMBA configuration file.
+
+        Returns:
+            list: A list of network interfaces set in the SAMBA configuration file.
+
+            If there are no interfaces set, an empty list is returned.
+        """
+        conf_data = self.__read_samba_conf()
+        conf_data = "".join(conf_data)
+        
+        try:
+            interface = self.__extract_setting_from_tag("global", "interfaces", conf_data)
+            
+            interface = interface.split(" ")
+            
+            # Removing empty strings from the list
+            interface = [i for i in interface if i != ""]
+            
+        except SettingNotFound:
+            return []
+        
+        return interface
     
     # --- SAMBA SERVICE METHODS ---
     
