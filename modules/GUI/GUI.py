@@ -97,7 +97,7 @@ class PS2NetManagerGUI(QMainWindow):
         msg_container.setStyleSheet(F"background-color: {Colors.OFF_WHITE}; color: {Colors.OFF_BLACK};")
         msg_container.setFixedHeight(CONTAINER_HEIGHT)
 
-        msg_container.setPlainText("Mensagens de status aparecerão aqui.")
+        msg_container.setPlainText("----------- LOGS APARECERÃO AQUI -----------")
         
         msg_container.setObjectName(WN.LOG_MSG_CONTAINER.value)
         return msg_container
