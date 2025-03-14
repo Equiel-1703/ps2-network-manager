@@ -1,9 +1,5 @@
-from enum import Enum
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import Qt, QRect
 
-from modules.GUI.GUIColors import GUIColors as Colors
-from modules.GUI.GUIFonts import GUIFonts as Fonts
 from modules.GUI.GUICustomWidgets import GUICustomWidgets as Widgets
 from modules.GUI.ListSelectDialog import ListSelectDialog
 

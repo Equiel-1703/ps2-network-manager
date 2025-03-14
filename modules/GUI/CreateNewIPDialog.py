@@ -4,7 +4,6 @@ from PyQt6.QtCore import Qt, QRect, QRegularExpression
 from PyQt6.QtGui import QRegularExpressionValidator
 
 from modules.GUI.GUIColors import GUIColors as Colors
-from modules.GUI.GUIFonts import GUIFonts as Fonts
 from modules.GUI.GUICustomWidgets import GUICustomWidgets as Widgets
 
 class DialogDimensions(Enum):

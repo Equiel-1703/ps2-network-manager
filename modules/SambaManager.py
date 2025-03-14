@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import pwd
-import grp
 import psutil
 import socket
 from colorama import Fore
