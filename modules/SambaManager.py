@@ -19,6 +19,9 @@ class SambaManager:
     __shared_ps2_folder_path = ""
     
     __server_active = False
+    
+    __server_ip = None
+    __server_interface = None
 
     def __init__(self, debug=False):
         self.debug = debug
@@ -729,7 +732,7 @@ class SambaManager:
             interface (str): The name of the network interface.
 
         Returns:
-            list: A list of tuples containing the IPv4 address and its mask for the given network interface.
+            list: A list of tuples in the format (ip, mask) for the given network interface.
             If the interface is not found, an empty list is returned.
         """
         
@@ -742,6 +745,25 @@ class SambaManager:
                     ipv4_addresses.append((addr.address, addr.netmask))
         
         return ipv4_addresses
+    
+    def get_subnet_mask_for_ip(self, ip: str) -> str:
+        """Returns the subnet mask for a given IPv4 address.
+
+        Args:
+            ip (str): The IPv4 address.
+
+        Returns:
+            str: The subnet mask for the given IPv4 address or None if the address is not found.
+        """
+        
+        interfaces = psutil.net_if_addrs()
+        
+        for interface in interfaces:
+            for addr in interfaces[interface]:
+                if addr.family == socket.AF_INET and addr.address == ip:
+                    return addr.netmask
+        
+        return None
     
     def check_if_ip_is_valid(self, ip: str) -> bool:
         """Checks if the provided IPv4 address is valid.
@@ -796,15 +818,12 @@ class SambaManager:
         else:
             return False
     
-    def set_interface_in_samba_conf(self, interface: str, ip: str) -> None:
-        """Sets the network interface and IP address in the SAMBA configuration file.
+    def set_interface_and_ip(self, interface: str, ip: str) -> None:
+        """Sets the network interface and IP address in the SAMBA configuration file and internally.
 
         Args:
             interface (str): The name of the network interface.
             ip (str): The IP address to set for the interface.
-
-        Raises:
-            SambaServiceFailure: If the service restart command returns a non-zero value.
         """
         
         conf_data = self.__read_samba_conf()
@@ -820,10 +839,12 @@ class SambaManager:
         conf_file.write(conf_data)
         conf_file.close()
         
-        print(Fore.GREEN + f"Interface {interface} e IP {ip} adicionados à configuração do SAMBA com sucesso!")
+        # Saving the interface and IP address in the internal variables
+        self.__server_interface = interface
+        self.__server_ip = ip
         
-        # Restart server to changes take effect
-        self.restart_server()
+        if self.debug:
+            print(Fore.GREEN + f"Interface {interface} e IP {ip} foram carregados no arquivo de configuração do SAMBA.")
     
     def get_interfaces_in_samba_conf(self) -> list[str]:
         """Returns the network interfaces set in the SAMBA configuration file.
@@ -859,7 +880,14 @@ class SambaManager:
             
         Raises:
             SambaServiceFailure: If the service start command returns a non-zero value.
+            ValueError: If the server IP or interface is not set.
         """
+        
+        if self.__server_interface is None:
+            raise ValueError("A interface do servidor não foi definida. Defina a interface do servidor antes de iniciar o servidor!")
+
+        if self.__server_ip is None:
+            raise ValueError("O IP do servidor não foi definido. Defina o IP do servidor antes de iniciar o servidor!")
         
         ret = os.system("systemctl start smbd nmbd")
         
@@ -897,7 +925,14 @@ class SambaManager:
             
         Raises:
             SambaServiceFailure: If the service restart command returns a non-zero value.
+            ValueError: If the server IP or interface is not set.
         """
+        
+        if self.__server_ip is None:
+            raise ValueError("O IP do servidor não foi definido. Defina o IP do servidor antes de reiniciar o servidor!")
+
+        if self.__server_interface is None:
+            raise ValueError("A interface do servidor não foi definida. Defina a interface do servidor antes de reiniciar o servidor!")
         
         ret = os.system("systemctl restart smbd nmbd")
         

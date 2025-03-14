@@ -99,7 +99,12 @@ class PS2NetManagerGUIController:
             self.log_success(msg)
         
         # At this point, we have the global and the PS2 share settings checked and created if necessary
-        # Now, let's load the network interface data
+    
+        # Now, let's load the network interface data, but first, we will load the default blank values
+        # in the GUI, so the user can see that there is no interface selected when the GUI is loaded
+        self.__load_interface_blank_labels()
+        
+        # Now we can load the network interface data from the Samba configuration file
         self.__setup_network_interface()
 
         # Now let's load the remaining settings into the GUI
@@ -228,45 +233,89 @@ class PS2NetManagerGUIController:
             status_label.setText("INATIVO")
 
     def __setup_network_interface(self):
-        """Loads and sets the network interface information into the GUI and internally in the SambaManager."""
-        
-        # Load blank labels first
-        self.__load_interface_blank_labels()
+        """
+        Loads and sets the network interface information from the Samba config file into the GUI and internally in the SambaManager.
+
+        Steps:
+        1. Retrieve the interfaces from the Samba configuration file.
+        2. Parse the interface settings to get the interface and IP address.
+        3. Validate and set the interface and IP address in the SambaManager and GUI.
+        4. Log a message if no valid interface and IP address are found.
+        """
         
         # Let's check what we have in the SAMBA configuration file
-        interfaces = self.samba_manager.get_interfaces_in_samba_conf()
+        samba_interfaces = self.samba_manager.get_interfaces_in_samba_conf()
+        interface, ip_address = self.__parse_smb_conf_interface_settings(samba_interfaces)
         
-        # Check amount of interfaces found
+        if interface is not None and ip_address is not None:
+            self.samba_manager.set_interface_and_ip(interface, ip_address)
+            self.__set_interface_and_ip_on_gui(interface, ip_address)
+        else:
+            msg = "Por favor, escolha a interface de rede e o endereço IP que deseja usar para o servidor SAMBA."
+            self.log(msg)
+
+    def __parse_smb_conf_interface_settings(self, interfaces: list[str]) -> tuple[str, str] | tuple[str, None] | tuple[None, None]:
+        """Parses the interfaces list provided from the Samba configuration file and returns the interface and IP address if they are valid.
+        Args:
+            interfaces (list[str]): The list of interfaces found in the Samba configuration file.
+            
+        Steps:
+        1. If no interfaces are found, log an error and return (None, None).
+        2. If more than 2 interfaces are found, log an error and return (None, None).
+        3. If only one interface is found, check if it exists and return it with 'None' as the IP address.
+        4. If two interfaces are found, check if the first one is a valid interface and the second one is a valid IP address.
         
-        if len(interfaces) == 1:
-            # Only one interface found, let's use it
+        Returns:
+            tuple[str, str]: The interface and IP address found in the configuration file (interface, ip).
+            tuple[str, None]: If the interface was found but no IP address was provided (interface, None).
+            tuple[None, None]: If the interface/ip address were invalid or not found.
+        """
+        
+        if len(interfaces) == 0:
+            # No interfaces found in the configuration file
+            err_msg = "ERRO: Nenhuma interface de rede encontrada."
+            
+            self.log_error(err_msg)
+            
+            return (None, None)
+    
+        elif len(interfaces) > 2:
+            # More than 2 elements in the interfaces field
+            err_msg = f"ERRO: Mais de duas interfaces encontradas: {interfaces}. Somente uma interface de rede e um endereço IP são permitidos."
+            
+            self.log_error(err_msg)
+            
+            return (None, None)
+        
+        elif len(interfaces) == 1:
+            # Only one interface was in the SAMBA configuration file
+            # Let's check if the interface is available
             interface = interfaces[0]
             
             self.log(f"Interface de rede encontrada: {interface}")
             
-            # If the interface is not available, we need to ask the user to choose another one
+            # Check if the interface is available
             if not self.samba_manager.check_if_interface_exists(interface):
                 err_msg = f"ERRO: A interface de rede {interface} não existe."
                 
                 self.log_error(err_msg)
                 
-                # Show dialog to the user choose an interface
-                self.__configure_network_interface_and_ip()
-                return
+                # Interface settings not found
+                return (None, None)
             
-            # If the interface is available, we ask the user to choose an IP address
+            # If the interface is available, we can return it
             else:
-                msg = f"A interface de rede {interface} foi encontrada."
+                msg = f"A interface de rede {interface} foi encontrada. Mas não foi encontrado um endereço IP para ela."
                 
                 self.log_success(msg)
                 
-                # TODO: Show dialog to the user choose an available IP for the interface
+                return (interface, None)
         
         # If there are more than one element in the interfaces field, the second one should be an IP
         # address and the first one should be the interface name
         elif len(interfaces) == 2:
-            interface = interfaces[0]
-            ip_address = interfaces[1]
+            # Let's check these values
+            interface, ip_address = interfaces[0], interfaces[1]
             
             # Check if interface is available
             if not self.samba_manager.check_if_interface_exists(interface):
@@ -274,8 +323,7 @@ class PS2NetManagerGUIController:
                 
                 self.log_error(err_msg)
                 
-                # TODO: Show dialog to the user choose an interface
-                return
+                return (None, None)
             
             # Check if the IP address is valid
             if not self.samba_manager.check_if_ip_is_valid(ip_address):
@@ -283,9 +331,7 @@ class PS2NetManagerGUIController:
                 
                 self.log_error(err_msg)
                 
-                # TODO: Show dialog to the user choose an interface (the IP is invalid, so it's better to ask the user
-                # for a new interface)
-                return
+                return (None, None)
             
             # Check if the IP address is available in the interface
             if not self.samba_manager.check_if_ip_is_bound(ip_address, interface):
@@ -293,135 +339,26 @@ class PS2NetManagerGUIController:
                 
                 self.log_error(err_msg)
                 
-                # TODO: Show dialog to the user choose an interface (probably the IP is not available anymore, so 
-                # it's better to ask the user to choose a new interface)
-                return
+                return (None, None)
+        
+            # OK, everything is fine, let's return the interface and IP address!
+            msg = f"A interface de rede {interface} e o endereço IP {ip_address} foram encontrados e validados!"
             
-            # If nothing went wrong, we can set the interface and IP address
-            msg = f"A interface de rede {interface} foi encontrada e o endereço IP {ip_address} está disponível."
             self.log_success(msg)
             
-            try:
-                self.samba_manager.set_interface_in_samba_conf(interface, ip_address)
-            
-            except SambaServiceFailure as e:
-                err_msg = f"ERRO DE SERVIÇO: {e.error_message}\nA interface foi alterada no arquivo de configuração, mas houve um erro ao reiniciar o serviço do SAMBA. Portanto, a nova interface ainda não está visível na rede."
-                
-                self.log_error(err_msg)
-        
-        # If there are more than two elements or none, we ask for the user to choose
-        # the interface
-        else:
-            if len(interfaces) > 2:
-                err_msg = f"ERRO: Mais de duas interfaces encontradas: {interfaces}."
-            else:
-                err_msg = "ERRO: Nenhuma interface de rede encontrada."
-            
-            self.log_error(err_msg)
-            
-            # Show dialog to the user choose an interface
-            self.__configure_network_interface_and_ip()
-            return    
-
-    def __configure_network_interface_and_ip(self):
-        """Shows a dialog to the user to select the network interface and then asks for the IP address."""
-        
-        # Get GUI elements of the interface data
-        interface_name_label = self.gui.findChild(QLabel, WN.INTERFACE_NAME_LABEL.value)
-        interface_ip_label = self.gui.findChild(QLabel, WN.INTERFACE_IP_LABEL.value)
-        interface_mask_label = self.gui.findChild(QLabel, WN.INTERFACE_MASK_LABEL.value)
-        
-        available_interfaces = self.samba_manager.get_available_network_interfaces()
-        available_interfaces.insert(0, "NENHUMA")
-        
-        self.log(f"Interfaces de rede disponíveis: {available_interfaces}")
-        
-        # Show dialog to the user to choose the network interface
-        dialog = LSDialog(
-            self.gui,
-            "Escolher interface de rede",
-            "Escolha a interface de rede que deseja usar para o servidor SAMBA",
-            available_interfaces
-        )
-        
-        dialog_ret = dialog.exec()
-        selected_interface = dialog.get_selected_option()
-        
-        if dialog_ret == 0 or selected_interface == None:
-            # User canceled the dialog
-            msg = "Operação cancelada pelo usuário."
-            self.log(msg)
-            return
+            return (interface, ip_address)
     
-        if selected_interface == "NENHUMA":
-            # Blank values will be set in the GUI
-            self.__load_interface_blank_labels()
-            
-            msg = "Nenhuma interface de rede foi escolhida."
-            self.log(msg)
-            
-            return
-        
-        # Now let's choose the ip for this interface
-        selected_ip = self.__choose_ip_address(selected_interface)
-        
-        if selected_ip == None:
-            return
-        
-        selected_mask = selected_ip.split(" / ")[1]
-        selected_ip = selected_ip.split(" / ")[0]
-        
-        # Now let's set the interface and IP address in the SambaManager
-        try:
-            self.samba_manager.set_interface_in_samba_conf(selected_interface, selected_ip)
-            
-        except SambaServiceFailure as e:
-            err_msg = f"ERRO DE SERVIÇO: {e.error_message}\nA interface foi alterada no arquivo de configuração, mas houve um erro ao reiniciar o serviço do SAMBA. Portanto, a nova interface ainda não está visível na rede."
-            
-            self.log_error(err_msg)
-        
-        finally:
-            # Now let's set the interface and IP address in the GUI
-            interface_name_label.setText(selected_interface)
-            interface_ip_label.setText(selected_ip)
-            interface_mask_label.setText(selected_mask)
-        
-    def __choose_ip_address(self, interface: str) -> str:
-        """Shows a dialog to the user to select the available IP addresses for the provided interface.
-        
-        Args:
-            interface (str): The network interface to choose the IP address for.
+        # This return should never be reached, but just in case
+        return (None, None)
+
+    def __create_new_ip_address(self, parent: LASDialog, interface: str, ip_mask_string_formatter: callable) -> None:
+        """Dialog to create a new IP address and subnet-mask for the provided interface.
         
         Returns:
-            str: The selected IP address or None if the user canceled the dialog.
+            None
         """
         
-        available_ips = self.samba_manager.get_ipv4_addresses_for_interface(interface)
-        available_ips = [f"{ip} / {mask}" for ip, mask in available_ips]
-        
-        dialog = LASDialog(
-            self.gui,
-            "Escolher IP",
-            f"Escolha o endereço IP que deseja usar para a interface {interface}",
-            available_ips
-        )
-        
-        dialog.set_add_button_action(lambda: self.__create_new_ip_address(dialog, interface))
-        return_value = dialog.exec()
-        
-        if return_value == 0:
-            # User canceled the dialog
-            msg = "Operação cancelada pelo usuário."
-            self.log(msg)
-            return None
-        
-        return dialog.get_selected_option()
-    
-    def __create_new_ip_address(self, parent: LASDialog, interface: str):
-        """Dialog to create a new IP address and subnet-mask for the provided interface."""
-        
         dialog = IPDialog(parent, interface)
-        
         dialog_ret = dialog.exec()
         
         if dialog_ret == 0:
@@ -434,7 +371,8 @@ class PS2NetManagerGUIController:
         ip_address = dialog.get_ip()
         subnet_mask = dialog.get_mask()
         
-        convert_to_cidr = lambda mask: ipaddress.IPv4Network(f"0.0.0.0/{mask}", strict=False).prefixlen
+        def convert_to_cidr(mask):
+            return ipaddress.IPv4Network(f"0.0.0.0/{mask}", strict=False).prefixlen
         
         # Add new IP address to the interface
         try:
@@ -442,15 +380,57 @@ class PS2NetManagerGUIController:
             subprocess.run(command, check=True)
             
             # Add new IP and Mask to the list
-            parent.add_item_to_list(f"{ip_address} / {subnet_mask}")
+            parent.add_item_to_list(ip_mask_string_formatter(ip_address, subnet_mask))
             
             self.log_success(f"Novo IP {ip_address} adicionado à interface {interface}.")
             
         except subprocess.CalledProcessError as e:
             self.log_error(f"ERRO: {e}\nNão foi possível adicionar o novo IP à interface {interface}.")
-            return
+        except FileNotFoundError:
+            self.log_error("ERRO: O comando 'ip' não foi encontrado. Certifique-se de que o programa 'ip' está instalado.")
+        except Exception as e:
+            self.log_error(f"ERRO DESCONHECIDO: {e}")
+        return
 
-    def __load_interface_blank_labels(self):
+    def __select_ip_address_dialog(self, interface: str) -> str | None:
+        """Shows a dialog for the user choose an IP from the available IP addresses of the provided interface.
+        
+        Args:
+            interface (str): The network interface to choose the IP address for.
+        
+        Returns:
+            str: The selected IP address (without mask) or None if the user canceled the dialog.
+        """
+        
+        available_ips = self.samba_manager.get_ipv4_addresses_for_interface(interface)
+        ip_mask_string_formatter = lambda ip, mask: f"{ip} / {mask}"
+        
+        ip_selection_dialog = LASDialog(
+            self.gui,
+            "Escolher IP",
+            f"Escolha o endereço IP que deseja usar para a interface {interface}",
+            (ip_mask_string_formatter(ip, mask) for ip, mask in available_ips)
+        )
+        
+        # Set action for the 'Adicionar...' button in the ip_selection_dialog
+        ip_selection_dialog.set_add_button_action(lambda: self.__create_new_ip_address(ip_selection_dialog, interface, ip_mask_string_formatter))
+        return_value = ip_selection_dialog.exec()
+        
+        if return_value == 0:
+            # User canceled the dialog
+            msg = "Operação cancelada pelo usuário."
+            self.log(msg)
+            return None
+        
+        ip_selected = ip_selection_dialog.get_selected_option()
+        
+        if ip_selected is not None:
+            # If the user selected an IP address, we need to split it to get the IP address only
+            ip_selected = ip_selected.split(" / ")[0].strip()
+        
+        return ip_selected
+
+    def __load_interface_blank_labels(self) -> None:
         """Loads the interface labels with blank values."""
         
         # Get GUI elements of the interface data
@@ -462,6 +442,19 @@ class PS2NetManagerGUIController:
         interface_name_label.setText("NENHUMA")
         interface_ip_label.setText("X.X.X.X")
         interface_mask_label.setText("X.X.X.X")
+
+    def __set_interface_and_ip_on_gui(self, interface: str, ip: str):
+        """Set the provided interface and IP address in the GUI."""
+        
+        # Get GUI elements of the interface data
+        interface_name_label = self.gui.findChild(QLabel, WN.INTERFACE_NAME_LABEL.value)
+        interface_ip_label = self.gui.findChild(QLabel, WN.INTERFACE_IP_LABEL.value)
+        interface_mask_label = self.gui.findChild(QLabel, WN.INTERFACE_MASK_LABEL.value)
+        
+        # Set the values in the GUI
+        interface_name_label.setText(interface)
+        interface_ip_label.setText(ip)
+        interface_mask_label.setText(self.samba_manager.get_subnet_mask_for_ip(ip))
 
     def log(self, text: str):
         """Logs a message to the log display widget and the terminal."""
@@ -505,7 +498,7 @@ class PS2NetManagerGUIController:
             
             sys.exit(1)
 
-    def on_change_folder_button_clicked(self):
+    def on_change_folder_button_clicked(self) -> None:
         """Handles the 'Change Folder' button click event."""
         
         # Launch a dialog to ask the user where to create the PS2 share folder
@@ -560,3 +553,50 @@ class PS2NetManagerGUIController:
             # Update the label in the GUI
             share_folder_path_label = self.gui.findChild(QLabel, WN.SHARE_FOLDER_PATH.value)
             share_folder_path_label.setText(folder_path)
+    
+    def on_change_interface_button_clicked(self) -> tuple[str, str] | tuple[None, None]:
+        """Shows a dialog to the user to select the network interface and another dialog to prompt for the IP address.
+        
+        Returns:
+            tuple[str, str]: The selected interface and IP address (interface, ip).
+            tuple[None, None]: If the user canceled the dialog.
+        """
+        
+        available_interfaces = self.samba_manager.get_available_network_interfaces()
+        available_interfaces.insert(0, "NENHUMA")
+        
+        self.log(f"Interfaces de rede disponíveis: {available_interfaces}")
+        
+        # Show dialog to the user to choose the network interface
+        dialog = LSDialog(
+            self.gui,
+            "Escolher interface de rede",
+            "Escolha a interface de rede que deseja usar para o servidor SAMBA",
+            available_interfaces
+        )
+        
+        dialog_ret = dialog.exec()
+        selected_interface = dialog.get_selected_option()
+        
+        if dialog_ret == 0 or selected_interface == None:
+            # User canceled the dialog
+            msg = "Operação cancelada pelo usuário."
+            self.log(msg)
+            return None, None
+    
+        if selected_interface == "NENHUMA":
+            # Blank values will be set in the GUI
+            self.__load_interface_blank_labels()
+            
+            msg = "Nenhuma interface de rede foi escolhida."
+            self.log(msg)
+            
+            return None, None
+        
+        # Now let's choose the ip for this interface
+        selected_ip = self.__select_ip_address_dialog(selected_interface)
+        
+        if selected_ip == None:
+            return None, None
+
+        return (selected_interface, selected_ip)
