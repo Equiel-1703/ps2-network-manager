@@ -269,11 +269,11 @@ class PS2NetManagerGUI(QMainWindow):
 
         start_button = Widgets.create_button(self, "INICIAR", bg_color=Colors.LIGHT_GREEN)
         start_button.setObjectName(WN.START_SERVER_BUTTON.value)
-        start_button.clicked.connect(lambda: print("Start button clicked"))
+        start_button.clicked.connect(self.gui_controller.on_start_server_button_clicked)
 
         stop_button = Widgets.create_button(self, "PARAR", bg_color=Colors.SOFT_RED)
         stop_button.setObjectName(WN.STOP_SERVER_BUTTON.value)
-        stop_button.clicked.connect(lambda: print("Stop button clicked"))
+        stop_button.clicked.connect(self.gui_controller.on_stop_server_button_clicked)
 
         buttons_layout.addWidget(change_interface_button)
         buttons_layout.addStretch()

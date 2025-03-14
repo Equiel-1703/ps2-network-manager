@@ -281,6 +281,7 @@ class PS2NetManagerGUIController:
                 # The user wants to add the IP address to the interface
                 self.__add_ip_address_to_interface(interface, ip_address)
                 self.__set_interface_and_ip_on_gui(interface, ip_address)
+                self.samba_manager.set_interface_and_ip(interface, ip_address)
             else:
                 # The user doesn't want to add the IP address to the interface.
                 # We can't use the interface without the IP address. This is due to security vulnerabilities of the SMBv1 protocol and
@@ -664,3 +665,66 @@ class PS2NetManagerGUIController:
         self.__set_interface_and_ip_on_gui(selected_interface, selected_ip)
         
         self.log_success(f"Interface de rede {selected_interface} e endereço IP {selected_ip} escolhidos com sucesso.")
+
+    def on_start_server_button_clicked(self) -> None:
+        """Handles the 'Start Server' button click event."""
+        
+        # Start the Samba server
+        try:
+            self.samba_manager.start_server()
+            
+            msg = "Servidor SAMBA iniciado com sucesso."
+            self.log_success(msg)
+            
+        except SambaServiceFailure as e:
+            err_msg = f"ERRO DE SERVIÇO: {e}"
+            err_description = "O servidor SAMBA não pôde ser iniciado. Verifique o log para mais detalhes."
+            
+            self.log_error(f"{err_msg}\n{err_description}")
+        
+        except ValueError as e:
+            err_msg = f"ERRO: {e}"
+            
+            self.log_error(err_msg)
+            
+            message_box = QMessageBox(self.gui)
+            message_box.setWindowTitle("Erro")
+            message_box.setText(err_msg)
+            message_box.setIcon(QMessageBox.Icon.Critical)
+            message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+            message_box.exec()
+        
+        except Exception as e:
+            err_msg = f"ERRO DESCONHECIDO: {e}"
+            
+            self.log_error(err_msg)
+        
+        finally:
+            # Update the server status in the GUI
+            self.__update_server_status(self.samba_manager.get_server_status())
+    
+    def on_stop_server_button_clicked(self) -> None:
+        """Handles the 'Stop Server' button click event."""
+        
+        # Stop the Samba server
+        try:
+            self.samba_manager.stop_server()
+            
+            msg = "Servidor SAMBA parado com sucesso."
+            self.log_success(msg)
+        
+        except SambaServiceFailure as e:
+            err_msg = f"ERRO DE SERVIÇO: {e}"
+            err_description = "O servidor SAMBA não pôde ser parado. Verifique o log para mais detalhes."
+            
+            self.log_error(f"{err_msg}\n{err_description}")
+            self.__update_server_status(self.samba_manager.get_server_status())
+        
+        except Exception as e:
+            err_msg = f"ERRO DESCONHECIDO: {e}"
+            
+            self.log_error(err_msg)
+        
+        finally:
+            # Update the server status in the GUI
+            self.__update_server_status(self.samba_manager.get_server_status())
