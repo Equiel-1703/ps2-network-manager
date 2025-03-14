@@ -250,6 +250,44 @@ class PS2NetManagerGUIController:
         if interface is not None and ip_address is not None:
             self.samba_manager.set_interface_and_ip(interface, ip_address)
             self.__set_interface_and_ip_on_gui(interface, ip_address)
+        
+        elif interface is not None and ip_address is None:
+            # If we have an interface but the IP address wasn't found, we can ask the user
+            # if he wants we add it in the interface
+            
+            # We know the second element in the samba_interfaces list is the IP address
+            # because we are using the __parse_smb_conf_interface_settings method
+            ip_address = self.samba_manager.get_interfaces_in_samba_conf()[1]
+            
+            
+            msg = f"A interface de rede {interface} foi encontrada, mas o IP configurado {ip_address} não foi encontrado nela. Deseja adicionar esse IP à interface?"
+            details = (
+                "Se você não quiser adicionar o IP à interface, o PS2 Network Manager vai configurar a interface e o IP do Samba como 'NENHUM'. "
+                "Isso é necessário pois o protocolo SMBv1 usado pelo PS2 tem vulnerabilidades de segurança e não sabemos se essa interface possui algum endereço IPv4 disponível. "
+                "Portanto, isso é necessário para garantir a segurança do sistema e a confiabilidade do PS2 Network Manager."
+            )
+            
+            message_box = QMessageBox(self.gui)
+            message_box.setWindowTitle("Adicionar IP à interface")
+            message_box.setText(msg)
+            message_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            message_box.setDefaultButton(QMessageBox.StandardButton.Yes)
+            message_box.setIcon(QMessageBox.Icon.Question)
+            message_box.setDetailedText(details)
+            
+            reply = message_box.exec()
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # The user wants to add the IP address to the interface
+                self.__add_ip_address_to_interface(interface, ip_address)
+                self.__set_interface_and_ip_on_gui(interface, ip_address)
+            else:
+                # The user doesn't want to add the IP address to the interface.
+                # We can't use the interface without the IP address. This is due to security vulnerabilities of the SMBv1 protocol and
+                # also because we don't know if this interface has any available IPv4 address.
+                # To guarantee the security of the system and reability of the PS2Manager, we will set the interface and IP address to None
+                self.samba_manager.set_interface_and_ip(None, None)
+                self.__load_interface_blank_labels()
         else:
             msg = "Por favor, escolha a interface de rede e o endereço IP que deseja usar para o servidor SAMBA."
             self.log(msg)
@@ -267,7 +305,7 @@ class PS2NetManagerGUIController:
         
         Returns:
             tuple[str, str]: The interface and IP address found in the configuration file (interface, ip).
-            tuple[str, None]: If the interface was found but no IP address was provided (interface, None).
+            tuple[str, None]: If the interface was found but the IP address was not found (interface, None).
             tuple[None, None]: If the interface/ip address were invalid or not found.
         """
         
@@ -309,7 +347,7 @@ class PS2NetManagerGUIController:
                 
                 self.log_success(msg)
                 
-                return (interface, None)
+                return (None, None)
         
         # If there are more than one element in the interfaces field, the second one should be an IP
         # address and the first one should be the interface name
@@ -339,7 +377,7 @@ class PS2NetManagerGUIController:
                 
                 self.log_error(err_msg)
                 
-                return (None, None)
+                return (interface, None)
         
             # OK, everything is fine, let's return the interface and IP address!
             msg = f"A interface de rede {interface} e o endereço IP {ip_address} foram encontrados e validados!"
@@ -351,25 +389,14 @@ class PS2NetManagerGUIController:
         # This return should never be reached, but just in case
         return (None, None)
 
-    def __create_new_ip_address(self, parent: LASDialog, interface: str, ip_mask_string_formatter: callable) -> None:
-        """Dialog to create a new IP address and subnet-mask for the provided interface.
+    def __add_ip_address_to_interface(self, interface: str, ip_address: str, subnet_mask: str = "255.255.255.0") -> None:
+        """Adds a new IP address to the provided interface.
         
-        Returns:
-            None
+        Args:
+            interface (str): The network interface to add the IP address to.
+            ip_address (str): The new IP address to add.
+            subnet_mask (str): The subnet mask for the new IP address. Defaults to 255.255.255.0
         """
-        
-        dialog = IPDialog(parent, interface)
-        dialog_ret = dialog.exec()
-        
-        if dialog_ret == 0:
-            # User canceled the dialog
-            msg = "Operação cancelada pelo usuário."
-            self.log(msg)
-            return
-        
-        # Get the new IP address and subnet mask
-        ip_address = dialog.get_ip()
-        subnet_mask = dialog.get_mask()
         
         def convert_to_cidr(mask):
             return ipaddress.IPv4Network(f"0.0.0.0/{mask}", strict=False).prefixlen
@@ -379,9 +406,6 @@ class PS2NetManagerGUIController:
             command = ["ip", "addr", "add", f"{ip_address}/{convert_to_cidr(subnet_mask)}", "dev", interface]
             subprocess.run(command, check=True)
             
-            # Add new IP and Mask to the list
-            parent.add_item_to_list(ip_mask_string_formatter(ip_address, subnet_mask))
-            
             self.log_success(f"Novo IP {ip_address} adicionado à interface {interface}.")
             
         except subprocess.CalledProcessError as e:
@@ -390,11 +414,39 @@ class PS2NetManagerGUIController:
             self.log_error("ERRO: O comando 'ip' não foi encontrado. Certifique-se de que o programa 'ip' está instalado.")
         except Exception as e:
             self.log_error(f"ERRO DESCONHECIDO: {e}")
+
+    def __create_new_ip_dialog(self, parent: LASDialog, interface: str, ip_mask_string_formatter: callable) -> None:
+        """Dialog to create a new IP address and subnet-mask for the provided interface.
+        
+        Returns:
+            None
+        """
+        
+        create_ip_dialog = IPDialog(parent, interface)
+        dialog_ret = create_ip_dialog.exec()
+        
+        if dialog_ret == 0:
+            # User canceled the dialog
+            msg = "Operação cancelada pelo usuário."
+            self.log(msg)
+            return
+        
+        # Get the new IP address and subnet mask from create_ip_dialog
+        ip_address = create_ip_dialog.get_ip()
+        subnet_mask = create_ip_dialog.get_mask()
+        
+        # Add the new IP address to the interface
+        self.__add_ip_address_to_interface(interface, ip_address, subnet_mask)
+
+        # Add new IP and Mask to the list
+        parent.add_item_to_list(ip_mask_string_formatter(ip_address, subnet_mask))
         
         return
 
     def __select_ip_address_dialog(self, interface: str) -> str | None:
-        """Shows a dialog for the user choose an IP from the available IP addresses of the provided interface.
+        """Shows a dialog where the user cam choose an IP from the available IP addresses of the provided interface.
+        
+        It also allows the user to create a new IP address and subnet mask for the interface.
         
         Args:
             interface (str): The network interface to choose the IP address for.
@@ -414,7 +466,7 @@ class PS2NetManagerGUIController:
         )
         
         # Set action for the 'Adicionar...' button in the ip_selection_dialog
-        ip_selection_dialog.set_add_button_action(lambda: self.__create_new_ip_address(ip_selection_dialog, interface, ip_mask_string_formatter))
+        ip_selection_dialog.set_add_button_action(lambda: self.__create_new_ip_dialog(ip_selection_dialog, interface, ip_mask_string_formatter))
         return_value = ip_selection_dialog.exec()
         
         if return_value == 0:
