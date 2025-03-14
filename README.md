@@ -4,6 +4,8 @@ PS2 Network Manager is a tool designed to manage and configure a Samba server fo
 
 This project is a collaborative effort by Henrique Rodrigues, Daniel Lisboa, and Gabriel Pink, and is intended for educational purposes. It is not affiliated with or endorsed by any official PlayStation or Sony products.
 
+![screenshot](https://github.com/user-attachments/assets/92490267-4213-4888-bad4-e263f1c424b6)
+
 ## Features
 
 - **NetBIOS Name Configuration**: Easily set and change the NetBIOS name of your Samba server.
@@ -21,7 +23,7 @@ This project is a collaborative effort by Henrique Rodrigues, Daniel Lisboa, and
 - Python 3.6 or higher
 - Samba installed on your system
 
-## Installation Steps
+### Installation Steps
 
 1. Clone the repository:
     ```sh
@@ -80,9 +82,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Authors
 
-- Henrique Rodrigues
-- Daniel Lisboa
-- Gabriel Pink
+- [Henrique Rodrigues](https://github.com/Equiel-1703)
+- [Daniel Lisboa](https://github.com/danlisb)
+- [Gabriel Pink](https://github.com/GabrielRosaO)
 
 ## Acknowledgements
 
