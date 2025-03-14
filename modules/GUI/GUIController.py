@@ -12,6 +12,7 @@ from modules.GUI.ThreeOptionsDialog import ThreeOptionsDialog as TODialog
 from modules.GUI.ListSelectDialog import ListSelectDialog as LSDialog
 from modules.GUI.ListAddSelectDialog import ListAddSelectDialog as LASDialog
 from modules.GUI.CreateNewIPDialog import CreateNewIPDialog as IPDialog
+from modules.GUI.GUIColors import GUIColors as Colors
 from modules.Exceptions import *
 
 class PS2NetManagerGUIController:
@@ -229,8 +230,10 @@ class PS2NetManagerGUIController:
         status_label = self.gui.findChild(QLabel, WN.SERVER_STATUS_LABEL.value)
         if status:
             status_label.setText("ATIVO")
+            status_label.setStyleSheet(f"color: {Colors.LIGHT_GREEN};")
         else:
             status_label.setText("INATIVO")
+            status_label.setStyleSheet(f"color: {Colors.SOFT_RED};")
 
     def __setup_network_interface(self):
         """
