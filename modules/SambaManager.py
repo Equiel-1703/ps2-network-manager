@@ -121,7 +121,7 @@ class SambaManager:
 
         return conf_data
 
-    def __extract_tag_content(self, tag: str, conf_data: str) -> (str | None):
+    def __extract_tag_content(self, tag: str, conf_data: str) -> str:
         """Extracts the content of a tag from a configuration file.
 
         Args:
@@ -138,7 +138,7 @@ class SambaManager:
         tag_data = re.search(rf"\[{tag}\]\s*(?P<tag_data>.*?)(?=\[|$)", conf_data, flags=re.DOTALL)
 
         if tag_data is not None:
-            return tag_data.group("tag_data")
+            return tag_data.group("tag_data").strip()
         else:
             raise TagNotFound(tag)
     
@@ -162,7 +162,9 @@ class SambaManager:
             new_content[i] = new_content[i].strip()
 
         # Joining the new content and adding 3 spaces before each line
-        new_content = "\n   ".join(new_content)
+        indentation = "\n   "
+        new_content = indentation.join(new_content)
+        new_content += "\n"
         
         # Escaping backslashes
         new_content = new_content.replace("\\", "\\\\")
@@ -194,10 +196,10 @@ class SambaManager:
 
         if not self.__check_if_setting_exists(tag, setting, conf_data):
             # If the setting doesn't exist, we add it to the end of the tag
-            tag_data += f"\n   {setting} = {new_value}\n"
+            tag_data += f"\n   {setting} = {new_value}"
         else:
             # If the setting exists, we update it
-            tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}\n", tag_data)
+            tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}", tag_data)
 
         # Update tag content in configuration data
         conf_data = self.__update_tag_content(tag, tag_data.split("\n"), conf_data)
