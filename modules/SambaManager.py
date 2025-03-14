@@ -730,9 +730,6 @@ class SambaManager:
         self.__shared_ps2_folder_path = path
         
         print(Fore.GREEN + f"Caminho da pasta compartilhada alterado para '{path}' com sucesso!")
-        
-        # Restart server to changes take effect
-        self.restart_server()
     
     # --- NETWORK INTERFACE METHODS ---
     

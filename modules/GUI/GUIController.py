@@ -616,6 +616,9 @@ class PS2NetManagerGUIController:
             # Update the label in the GUI
             share_folder_path_label = self.gui.findChild(QLabel, WN.SHARE_FOLDER_PATH.value)
             share_folder_path_label.setText(folder_path)
+            
+            msg = "O caminho da pasta compartilhada foi atualizado com sucesso! Reinicie o servidor SAMBA para que as alterações tenham efeito."
+            self.log_success(msg)
     
     def on_change_interface_button_clicked(self) -> None:
         """Shows a dialog to the user to select the network interface and another dialog to prompt for the IP address.
