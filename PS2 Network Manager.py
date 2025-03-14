@@ -3,7 +3,7 @@
 
 import os
 import sys
-import socket
+import shutil
 import colorama
 from PyQt6.QtWidgets import QApplication
 from colorama import Fore
@@ -25,6 +25,18 @@ def check_os_support():
 
     if not sys.platform.startswith("linux"):
         print(Fore.RED + "Desculpe, mas este script só pode ser executado em sistemas operacionais Linux.")
+        sys.exit(1)
+
+def is_samba_installed():
+    return any(shutil.which(cmd) for cmd in ["smbd", "nmbd", "samba"])
+
+def check_samba_installed():
+    """Checks if Samba is installed on the system. If not, print an error message and exit the script."""
+
+    if not is_samba_installed():
+        print(Fore.RED + "O Samba não está instalado. Por favor, instale o Samba para usar este script.")
+        print(Fore.RED + "Você pode instalar o Samba usando o seguinte comando:")
+        print(Fore.CYAN + "sudo apt install samba")
         sys.exit(1)
 
 def process_args():
@@ -50,13 +62,15 @@ def process_args():
 
     return False
 
-
 if __name__ == "__main__":
     # Initializing colorama
     colorama.init(autoreset=True)
 
     # Check if the script is running on a supported OS
     check_os_support()
+    
+    # Check if Samba is installed
+    check_samba_installed()
 
     # Check if the script is running as root
     check_root()
