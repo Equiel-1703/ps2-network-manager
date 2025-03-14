@@ -241,6 +241,7 @@ class PS2NetManagerGUI(QMainWindow):
         transmition_speed_label = Widgets.create_label(self, "VELOCIDADE DE TRANSMISSÃO:")
 
         transmission_speed_value_label = Widgets.create_label(self, "0 KB/s", font=Fonts.BOLD_FONT)
+        transmission_speed_value_label.setObjectName(WN.TRANSMISSION_SPEED_LABEL.value)
         transmission_speed_value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         transmition_speed_layout.addWidget(transmition_speed_label)
@@ -263,12 +264,15 @@ class PS2NetManagerGUI(QMainWindow):
         buttons_layout.setSpacing(10)
 
         change_interface_button = Widgets.create_button(self, "ALTERAR INTERFACE DE REDE")
+        change_interface_button.setObjectName(WN.CHANGE_INTERFACE_BUTTON.value)
         change_interface_button.clicked.connect(lambda: print("Change interface button clicked"))
 
         start_button = Widgets.create_button(self, "INICIAR", bg_color=Colors.LIGHT_GREEN)
+        start_button.setObjectName(WN.START_SERVER_BUTTON.value)
         start_button.clicked.connect(lambda: print("Start button clicked"))
 
         stop_button = Widgets.create_button(self, "PARAR", bg_color=Colors.SOFT_RED)
+        stop_button.setObjectName(WN.STOP_SERVER_BUTTON.value)
         stop_button.clicked.connect(lambda: print("Stop button clicked"))
 
         buttons_layout.addWidget(change_interface_button)
