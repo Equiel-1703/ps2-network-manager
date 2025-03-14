@@ -78,7 +78,7 @@ class ListSelectDialog(QDialog):
         self.setLayout(layout_v)
         self.setStyleSheet(f"background-color: {Colors.DEEP_PURPLE};")
         
-    def get_selected_option(self) -> str:
+    def get_selected_option(self) -> str | None:
         """Returns the selected option from the list.
         
         Returns:

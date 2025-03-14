@@ -160,6 +160,9 @@ class SambaManager:
         # Strip new content for consistency indentation
         for i in range(len(new_content)):
             new_content[i] = new_content[i].strip()
+        
+        # Removing empty lines
+        new_content = [line for line in new_content if line != ""]
 
         # Joining the new content and adding 3 spaces before each line
         indentation = "\n   "
@@ -200,6 +203,30 @@ class SambaManager:
         else:
             # If the setting exists, we update it
             tag_data = re.sub(rf"{setting} = .*", f"{setting} = {new_value}", tag_data)
+
+        # Update tag content in configuration data
+        conf_data = self.__update_tag_content(tag, tag_data.split("\n"), conf_data)
+
+        return conf_data
+
+    def __remove_setting_from_tag(self, tag: str, setting: str, conf_data: str) -> str:
+        """Removes a setting from a tag in a configuration file.
+        
+        If the setting doesn't exist, this method does nothing.
+
+        Args:
+            tag (str): The tag to search for.
+            setting (str): The setting to remove.
+            conf_data (str): The configuration file to update as a unique string.
+
+        Returns:
+            str: The new configuration file data with the setting removed.
+        """
+        # Extract tag content
+        tag_data = self.__extract_tag_content(tag, conf_data)
+
+        # Remove the setting from the tag content
+        tag_data = re.sub(rf"\s*{setting} = .*", "", tag_data)
 
         # Update tag content in configuration data
         conf_data = self.__update_tag_content(tag, tag_data.split("\n"), conf_data)
@@ -820,13 +847,42 @@ class SambaManager:
         else:
             return False
     
-    def set_interface_and_ip(self, interface: str, ip: str) -> None:
+    def __erase_interface_and_ip(self) -> None:
+        """Erases the network interface and IP address from the SAMBA configuration file and internal variables."""
+        
+        conf_data = self.__read_samba_conf()
+        conf_data = "".join(conf_data)
+        
+        # Removing the interface and IP address from the [global] section
+        conf_data = self.__remove_setting_from_tag("global", "interfaces", conf_data)
+        conf_data = self.__remove_setting_from_tag("global", "bind interfaces only", conf_data)
+        
+        # Writing the new configuration file
+        conf_file = open(self.SAMBA_CONF_PATH, "w")
+        conf_file.write(conf_data)
+        conf_file.close()
+        
+        # Erasing the internal variables
+        self.__server_interface = None
+        self.__server_ip = None
+        
+        if self.debug:
+            print(Fore.GREEN + "Interface e IP apagados do arquivo de configuração do SAMBA.")
+    
+    def set_interface_and_ip(self, interface: str | None, ip: str | None) -> None:
         """Sets the network interface and IP address in the SAMBA configuration file and internally.
 
         Args:
             interface (str): The name of the network interface.
             ip (str): The IP address to set for the interface.
+            
+            If one of the parameters is None, the interface and IP address will be
+            erased from the SAMBA configuration file and the internal variables.
         """
+        
+        if interface is None or ip is None:
+            self.__erase_interface_and_ip()
+            return
         
         conf_data = self.__read_samba_conf()
         conf_data = "".join(conf_data)

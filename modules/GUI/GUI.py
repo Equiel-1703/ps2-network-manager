@@ -265,7 +265,7 @@ class PS2NetManagerGUI(QMainWindow):
 
         change_interface_button = Widgets.create_button(self, "ALTERAR INTERFACE DE REDE")
         change_interface_button.setObjectName(WN.CHANGE_INTERFACE_BUTTON.value)
-        change_interface_button.clicked.connect(lambda: print("Change interface button clicked"))
+        change_interface_button.clicked.connect(self.gui_controller.on_change_interface_button_clicked)
 
         start_button = Widgets.create_button(self, "INICIAR", bg_color=Colors.LIGHT_GREEN)
         start_button.setObjectName(WN.START_SERVER_BUTTON.value)

@@ -554,12 +554,11 @@ class PS2NetManagerGUIController:
             share_folder_path_label = self.gui.findChild(QLabel, WN.SHARE_FOLDER_PATH.value)
             share_folder_path_label.setText(folder_path)
     
-    def on_change_interface_button_clicked(self) -> tuple[str, str] | tuple[None, None]:
+    def on_change_interface_button_clicked(self) -> None:
         """Shows a dialog to the user to select the network interface and another dialog to prompt for the IP address.
         
         Returns:
-            tuple[str, str]: The selected interface and IP address (interface, ip).
-            tuple[None, None]: If the user canceled the dialog.
+            None
         """
         
         available_interfaces = self.samba_manager.get_available_network_interfaces()
@@ -567,23 +566,24 @@ class PS2NetManagerGUIController:
         
         self.log(f"Interfaces de rede disponíveis: {available_interfaces}")
         
-        # Show dialog to the user to choose the network interface
-        dialog = LSDialog(
+        # Show dialog to the user choose the network interface he wants to use
+        network_interface_selection_dialog = LSDialog(
             self.gui,
             "Escolher interface de rede",
             "Escolha a interface de rede que deseja usar para o servidor SAMBA",
             available_interfaces
         )
         
-        dialog_ret = dialog.exec()
-        selected_interface = dialog.get_selected_option()
+        dialog_ret = network_interface_selection_dialog.exec()
+        selected_interface = network_interface_selection_dialog.get_selected_option()
         
+        # Check if the user canceled the dialog
         if dialog_ret == 0 or selected_interface == None:
-            # User canceled the dialog
             msg = "Operação cancelada pelo usuário."
             self.log(msg)
-            return None, None
+            return
     
+        # Check if the user selected the "NENHUMA" option
         if selected_interface == "NENHUMA":
             # Blank values will be set in the GUI
             self.__load_interface_blank_labels()
@@ -591,12 +591,23 @@ class PS2NetManagerGUIController:
             msg = "Nenhuma interface de rede foi escolhida."
             self.log(msg)
             
-            return None, None
+            # Erase the interface and IP address in the SambaManager and config file
+            self.samba_manager.set_interface_and_ip(None, None)
+            
+            return
         
-        # Now let's choose the ip for this interface
+        # If one of the available interfaces was selected, we can prompt for the IP address
         selected_ip = self.__select_ip_address_dialog(selected_interface)
         
+        # Check if the user canceled the dialog
         if selected_ip == None:
-            return None, None
-
-        return (selected_interface, selected_ip)
+            msg = "Operação cancelada pelo usuário."
+            self.log(msg)
+            return
+        
+        # If the user selected an interface and a valid IP address we can set these values
+        # in the SambaManager and in the GUI
+        self.samba_manager.set_interface_and_ip(selected_interface, selected_ip)
+        self.__set_interface_and_ip_on_gui(selected_interface, selected_ip)
+        
+        self.log_success(f"Interface de rede {selected_interface} e endereço IP {selected_ip} escolhidos com sucesso.")
