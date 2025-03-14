@@ -1,0 +1,4 @@
+colorama==0.4.6
+PyQt6==6.8.1
+PyQt6_sip==13.10.0
+pysmb==1.2.10
