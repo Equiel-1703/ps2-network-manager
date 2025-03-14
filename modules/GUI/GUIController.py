@@ -545,6 +545,9 @@ class PS2NetManagerGUIController:
         
         try:
             self.samba_manager.set_netbios_name(netbios_name)
+            
+            msg = f"O nome NetBIOS foi alterado para: {netbios_name} com sucesso."
+            self.log_success(msg)
         
         except ValueError as e:
             self.log_error(f"ERRO: {e}")
@@ -616,6 +619,9 @@ class PS2NetManagerGUIController:
             # Update the label in the GUI
             share_folder_path_label = self.gui.findChild(QLabel, WN.SHARE_FOLDER_PATH.value)
             share_folder_path_label.setText(folder_path)
+            
+            msg = "O caminho da pasta compartilhada foi atualizado com sucesso!"
+            self.log_success(msg)
     
     def on_change_interface_button_clicked(self) -> None:
         """Shows a dialog to the user to select the network interface and another dialog to prompt for the IP address.

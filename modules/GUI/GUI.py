@@ -1,6 +1,7 @@
 from enum import Enum
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import Qt, QRect
+from PyQt6.QtCore import Qt, QRect, QSize
+from PyQt6.QtGui import QIcon
 
 # Importing our custom modules
 from modules.GUI.GUIColors import GUIColors as Colors
@@ -29,6 +30,11 @@ class PS2NetManagerGUI(QMainWindow):
 
         # Window title
         self.setWindowTitle("PS2 Network Manager")
+        
+        # Window icon
+        self.setWindowIcon(QIcon("assets/icon_128.png"))
+        self.setIconSize(QSize(128, 128))
+        
 
         # Center window on screen
         window_rec = WindowDimensions.rect()

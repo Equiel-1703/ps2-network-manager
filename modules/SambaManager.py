@@ -437,10 +437,12 @@ class SambaManager:
 
         self.__netbios_name = netbios_name
         
-        print(Fore.GREEN + f"Nome NetBIOS alterado para '{netbios_name}' com sucesso!")
+        if self.debug:
+            print(Fore.GREEN + f"Nome NetBIOS alterado para '{netbios_name}' com sucesso!")
         
-        # Restart server to changes take effect
-        self.restart_server()
+        # Restart server (if active) to changes take effect
+        if self.__server_active:
+            self.restart_server()
     
     # --- PS2 SHARE METHODS ---
     
@@ -456,6 +458,19 @@ class SambaManager:
         ps2_default_folder_location = os.path.join(os.sep, "home", self.__user_name, self.PS2_SHARE_NAME)
         
         return ps2_default_folder_location
+    
+    def __get_ps2_force_user(self) -> str:
+        """Returns the user name of the system to be used as the force user for the PS2 share configuration.
+        The user name is used to create the default shared folder path, wich is /home/#user_name/PS2SMB.
+        
+        Returns:
+            str: The user name of the system.
+        """
+        
+        # Getting the user name
+        ps2_force_user = self.__user_name
+        
+        return ps2_force_user
     
     def __get_default_ps2_share_settings(self) -> list:
         """Returns the default settings for the PS2 share configuration.
@@ -479,6 +494,8 @@ class SambaManager:
         
         # Add path to the default settings
         ps2_default_settings.insert(1, f"path = {default_shared_folder}")
+        # Add force user to the default settings
+        ps2_default_settings.append(f"force user = {self.__get_ps2_force_user()}")
         
         return ps2_default_settings
     
@@ -731,8 +748,9 @@ class SambaManager:
         
         print(Fore.GREEN + f"Caminho da pasta compartilhada alterado para '{path}' com sucesso!")
         
-        # Restart server to changes take effect
-        self.restart_server()
+        # Restart server (if active) to changes take effect
+        if self.__server_active:
+            self.restart_server()
     
     # --- NETWORK INTERFACE METHODS ---
     
@@ -903,6 +921,10 @@ class SambaManager:
         
         if self.debug:
             print(Fore.GREEN + f"Interface {interface} e IP {ip} foram carregados no arquivo de configuração do SAMBA.")
+        
+        # Restart server (if active) to changes take effect
+        if self.__server_active:
+            self.restart_server()
     
     def get_interfaces_in_samba_conf(self) -> list[str]:
         """Returns the network interfaces set in the SAMBA configuration file.
