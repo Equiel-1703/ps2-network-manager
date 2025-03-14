@@ -928,6 +928,15 @@ class SambaManager:
         
         return interface
     
+    def get_current_interface(self) -> str | None:
+        """Returns the current network interface set for the SAMBA server.
+        
+        Returns:
+            str: The current network interface set for the SAMBA server or None if not set.
+        """
+        
+        return self.__server_interface
+    
     # --- SAMBA SERVICE METHODS ---
     
     def start_server(self) -> int:

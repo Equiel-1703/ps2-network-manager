@@ -10,3 +10,7 @@ class GUIInterface(Protocol):
     def findChild(self, type, name: str) -> QWidget:
         """Should return a child widget given its type and name."""
         pass
+    
+    def closeEvent(self, event) -> None:
+        """Should handle the close event of the GUI."""
+        pass

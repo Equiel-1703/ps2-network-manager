@@ -13,6 +13,7 @@ from modules.GUI.ListSelectDialog import ListSelectDialog as LSDialog
 from modules.GUI.ListAddSelectDialog import ListAddSelectDialog as LASDialog
 from modules.GUI.CreateNewIPDialog import CreateNewIPDialog as IPDialog
 from modules.GUI.GUIColors import GUIColors as Colors
+from modules.NetSpeedMonitor import NetSpeedMonitor
 from modules.Exceptions import *
 
 class PS2NetManagerGUIController:
@@ -24,6 +25,7 @@ class PS2NetManagerGUIController:
         self.samba_manager = samba_manager
         self.log_display_widget = log_display_widget
         self.gui = gui
+        self.net_speed_monitor = None
         
     def setup_samba_settings(self):
         """
@@ -37,6 +39,7 @@ class PS2NetManagerGUIController:
         5. Loads the network interface data.
         6. Loads the remaining settings into the GUI, including PS2 share name and folder path.
         7. Updates the server status in the GUI.
+        8. Resets the network speed values.
         """
         
         # Stop the SAMBA service when initializing the Manager
@@ -126,6 +129,9 @@ class PS2NetManagerGUIController:
         # Update the server status
         server_status = self.samba_manager.get_server_status()
         self.__update_server_status(server_status)
+        
+        # Reset net speed values
+        self.reset_net_speed_values()
     
     def __get_folder_path_from_file_dialog(self) -> str:
         """Opens a file dialog to choose the folder where to create the PS2 share folder.
@@ -679,6 +685,13 @@ class PS2NetManagerGUIController:
             msg = "Servidor SAMBA iniciado com sucesso."
             self.log_success(msg)
             
+            # Start the NetSpeedMonitor thread to measure the network speed
+            # in the current interface
+            self.net_speed_monitor = NetSpeedMonitor(self.samba_manager.get_current_interface())
+            self.net_speed_monitor.speed_updated.connect(self.update_net_speed)
+            self.net_speed_monitor.interface_not_found.connect(self.__on_interface_not_found_error)
+            self.net_speed_monitor.start()
+            
         except SambaServiceFailure as e:
             err_msg = f"ERRO DE SERVIÇO: {e}"
             err_description = "O servidor SAMBA não pôde ser iniciado. Verifique o log para mais detalhes."
@@ -706,6 +719,26 @@ class PS2NetManagerGUIController:
             # Update the server status in the GUI
             self.__update_server_status(self.samba_manager.get_server_status())
     
+    def __on_interface_not_found_error(self, interface: str) -> None:
+        """Handles the case when the selected interface is not found in the speed monitor."""
+        
+        self.on_stop_server_button_clicked() # Stop the server
+        
+        err_msg = f"ERRO: A interface de rede {interface} não foi mais encontrada durante a execução do programa.\
+            A interface e o IP do SAMBA foram configurados como 'NENHUM'."
+        
+        self.log_error(err_msg)
+        
+        # Show error messagebox to the user
+        message_box = QMessageBox(self.gui)
+        message_box.setWindowTitle("Erro")
+        message_box.setText(err_msg)
+        message_box.setIcon(QMessageBox.Icon.Critical)
+        message_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        message_box.exec()
+        
+        self.samba_manager.set_interface_and_ip(None, None) # Set the interface and IP address to None
+        
     def on_stop_server_button_clicked(self) -> None:
         """Handles the 'Stop Server' button click event."""
         
@@ -731,3 +764,36 @@ class PS2NetManagerGUIController:
         finally:
             # Update the server status in the GUI
             self.__update_server_status(self.samba_manager.get_server_status())
+            
+            if self.net_speed_monitor is not None:
+                self.net_speed_monitor.stop() # Stop the NetSpeedMonitor thread
+                self.net_speed_monitor.wait() # Wait for the thread to finish
+                self.net_speed_monitor = None # Set the NetSpeedMonitor instance to None
+            
+            self.reset_net_speed_values() # Reset the network speed values in the GUI
+            
+    def update_net_speed(self, up_speed: float, down_speed: float) -> None:
+        """Updates the network speed labels in the GUI with the provided upload and download speeds."""
+        
+        # Get GUI elements of the network speed data
+        transmission_speed_label = self.gui.findChild(QLabel, WN.TRANSMISSION_SPEED_LABEL.value)
+        
+        transmission_speed_label.setText(f"UP: {up_speed:.2f} KB/s | DOWN: {down_speed:.2f} KB/s")
+        transmission_speed_label.setStyleSheet(f"color: {Colors.LIGHT_GREEN};")
+        
+    def reset_net_speed_values(self) -> None:
+        """Resets the network speed labels in the GUI to blank values."""
+        
+        # Get GUI elements of the network speed data
+        transmission_speed_label = self.gui.findChild(QLabel, WN.TRANSMISSION_SPEED_LABEL.value)
+        
+        transmission_speed_label.setText("UP: 0.00 KB/s | DOWN: 0.00 KB/s")
+        transmission_speed_label.setStyleSheet(f"color: {Colors.LIGHT_GOLD};")
+    
+    def on_close_event(self) -> None:
+        """Handles the close event of the GUI."""
+        
+        # Stop the Samba server
+        self.on_stop_server_button_clicked()
+        
+        self.log("Programa encerrado com sucesso!")

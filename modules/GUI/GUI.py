@@ -167,7 +167,7 @@ class PS2NetManagerGUI(QMainWindow):
         shared_folder_layout.addWidget(shared_folder_label)
         shared_folder_layout.addWidget(shared_folder_path)
         shared_folder_layout.addWidget(change_folder_button)
-
+        
         return self.__wrap_layout(shared_folder_layout)
     
     def __net_settings_widget(self) -> QWidget:
@@ -281,3 +281,12 @@ class PS2NetManagerGUI(QMainWindow):
         buttons_layout.addWidget(stop_button)
 
         return self.__wrap_layout(buttons_layout)
+    
+    def closeEvent(self, event) -> None:
+        """Override the close event to handle cleanup before closing the application."""
+        
+        # Call the GUI controller to handle cleanup
+        self.gui_controller.on_close_event()
+        
+        # Call the base class implementation to close the window
+        super().closeEvent(event)
