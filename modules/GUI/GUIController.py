@@ -390,6 +390,7 @@ class PS2NetManagerGUIController:
             self.log_error("ERRO: O comando 'ip' não foi encontrado. Certifique-se de que o programa 'ip' está instalado.")
         except Exception as e:
             self.log_error(f"ERRO DESCONHECIDO: {e}")
+        
         return
 
     def __select_ip_address_dialog(self, interface: str) -> str | None:

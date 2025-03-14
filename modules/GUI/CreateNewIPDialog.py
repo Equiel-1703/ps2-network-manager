@@ -10,7 +10,7 @@ from modules.GUI.GUICustomWidgets import GUICustomWidgets as Widgets
 class DialogDimensions(Enum):
     """Enum for dialog dimensions."""
     WIDTH = 500
-    HEIGHT = 500
+    HEIGHT = 200
 
     @staticmethod
     def rect():
