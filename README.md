@@ -73,7 +73,7 @@ This project is a collaborative effort by Henrique Rodrigues, Daniel Lisboa, and
 
 To run the script in debug mode, use the `-d` or `--debug` flag:
 ```sh
-sudo python3 "PS2 Network Manager.py" --debug
+python3 "PS2 Network Manager.py" --debug
 ```
 
 ## License
@@ -88,4 +88,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Acknowledgements
 
-Special to [PS2 Homebrew](https://www.ps2homebrew.org/) for their amazing work on the Open PS2 Loader.
+Special thanks to [PS2 Homebrew](https://www.ps2homebrew.org/) for their amazing work on the Open PS2 Loader.
