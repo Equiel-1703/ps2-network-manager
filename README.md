@@ -51,14 +51,13 @@ This project is a collaborative effort by Henrique Rodrigues, Daniel Lisboa, and
 
 ## Usage
 
-1. Ensure you are in sudo mode or have root privileges. The script needs these permisions to manipulate the Samba configuration file in `/etc/samba/smb.conf`:
+1. Ensure you are in sudo mode or have root privileges. The app needs these permisions to manipulate the Samba configuration file in `/etc/samba/smb.conf`:
     ```sh
     sudo su
     ```
 
-2. Ensure you are in a Python 3 virtual environment. If you don't have one, create it:
+2. Ensure you are in the Python 3 virtual environment where you installed the requirements earlier. If you are not, activate it:
     ```sh
-    python3 -m venv myenv
     source myenv/bin/activate
     ```
 
@@ -88,4 +87,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Acknowledgements
 
-Special thanks to [PS2 Homebrew](https://www.ps2homebrew.org/) for their amazing work on the Open PS2 Loader.
+Special thanks to [PS2 Homebrew](https://www.ps2homebrew.org/) for their amazing work on the [Open PS2 Loader](https://github.com/ps2homebrew/Open-PS2-Loader).
